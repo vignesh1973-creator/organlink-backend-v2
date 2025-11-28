@@ -1,11 +1,11 @@
 import express from "express";
 import multer from "multer";
 import { pool } from "../config/database.js";
-import { authenticateHospital } from "../middleware/auth.js";
-import { blockchainService } from "../services/blockchain";
-import { ipfsService } from "../services/ipfs";
-import { ocrService } from "../services/ocr";
-import { aadhaarOCRService } from "../services/aadhaarOcr";
+import { authenticateHospital, AuthRequest } from "../middleware/auth.js";
+import { blockchainService } from "../services/blockchain.js";
+import { ipfsService } from "../services/ipfs.js";
+import { ocrService } from "../services/ocr.js";
+import { aadhaarOCRService } from "../services/aadhaarOcr.js";
 
 const router = express.Router();
 
@@ -25,7 +25,7 @@ const upload = multer({
 });
 
 // Get all patients for a hospital
-router.get("/", authenticateHospital, async (req, res) => {
+router.get("/", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
 
@@ -53,7 +53,7 @@ router.get("/", authenticateHospital, async (req, res) => {
 });
 
 // Get single patient
-router.get("/:patient_id", authenticateHospital, async (req, res) => {
+router.get("/:patient_id", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { patient_id } = req.params;
@@ -84,7 +84,7 @@ router.get("/:patient_id", authenticateHospital, async (req, res) => {
 });
 
 // Register new patient with signature verification and blockchain
-router.post("/register", upload.single('signature'), authenticateHospital, async (req, res) => {
+router.post("/register", upload.single('signature'), authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const hospital_name = req.hospital?.hospital_name || 'Unknown Hospital';
@@ -106,9 +106,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
     } = req.body;
 
     if (!req.file) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Signature image is required' 
+        error: 'Signature image is required'
       });
     }
 
@@ -125,7 +125,7 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       console.log('Starting Aadhaar verification...');
       try {
         const aadhaarResult = await aadhaarOCRService.extractAadhaarData(req.file.buffer);
-        
+
         if (!aadhaarResult.success || !aadhaarResult.data) {
           return res.status(400).json({
             success: false,
@@ -191,9 +191,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         }
       } catch (aadhaarError) {
         console.error('Aadhaar verification failed:', aadhaarError);
-        return res.status(500).json({ 
-          success: false, 
-          error: 'Aadhaar verification service unavailable' 
+        return res.status(500).json({
+          success: false,
+          error: 'Aadhaar verification service unavailable'
         });
       }
     } else {
@@ -202,9 +202,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         console.log('Starting signature verification...');
         const extractedText = await ocrService.extractTextFromImage(req.file.buffer);
         ocrResult = ocrService.verifySignatureNameEnhanced(extractedText, full_name);
-        
+
         console.log('OCR verification result:', ocrResult);
-        
+
         if (!ocrResult.match) {
           return res.status(400).json({
             success: false,
@@ -216,7 +216,7 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
             }
           });
         }
-        ocrResult.verificationType = 'signature';
+        (ocrResult as any).verificationType = 'signature';
       } catch (ocrError) {
         console.error('OCR verification failed:', ocrError);
         // In development, allow bypass for demo purposes
@@ -224,9 +224,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
           console.warn('OCR bypass enabled for development');
           ocrResult = { match: true, confidence: 80, extractedName: full_name, verificationType: 'signature' };
         } else {
-          return res.status(500).json({ 
-            success: false, 
-            error: 'Signature verification service unavailable' 
+          return res.status(500).json({
+            success: false,
+            error: 'Signature verification service unavailable'
           });
         }
       }
@@ -240,7 +240,7 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         req.file.buffer,
         `patient-signature-${full_name}-${Date.now()}.${req.file.mimetype.split('/')[1]}`,
         {
-          hospitalId: hospital_id.toString(),
+          hospitalId: hospital_id!.toString(),
           patientName: full_name.toString(),
           uploadDate: new Date().toISOString(),
           ocrVerified: ocrResult.match.toString(),
@@ -251,9 +251,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       console.log('Signature uploaded to IPFS:', ipfsCID);
     } catch (ipfsError) {
       console.error('IPFS upload failed:', ipfsError);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Failed to upload signature to IPFS' 
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to upload signature to IPFS'
       });
     }
 
@@ -262,14 +262,14 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
     try {
       console.log('Recording on blockchain...');
       const patientHash = blockchainService.generatePatientHash(
-        full_name, 
-        date_of_birth, 
-        national_id, 
+        full_name,
+        date_of_birth,
+        national_id,
         blood_type
       );
       blockchainHash = await blockchainService.addVerifiedRecord(
-        patientHash, 
-        hospital_name, 
+        patientHash,
+        hospital_name,
         ipfsCID,
         verificationType,  // 'signature' or 'aadhaar'
         ocrResult.match    // OCR verification result
@@ -277,11 +277,18 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       console.log('Blockchain record created:', blockchainHash);
     } catch (blockchainError) {
       console.error('Blockchain recording failed:', blockchainError);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Failed to record on blockchain' 
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to record on blockchain'
       });
     }
+
+    // Calculate hospital_display_id
+    const maxIdResult = await pool.query(
+      "SELECT MAX(hospital_display_id) as max_id FROM patients WHERE hospital_id = $1",
+      [hospital_id]
+    );
+    const nextDisplayId = (maxIdResult.rows[0]?.max_id || 0) + 1;
 
     // Step 4: Save to database (patient_id auto-generated, status defaults to 'Waiting')
     const result = await pool.query(
@@ -290,8 +297,8 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         organ_needed, urgency_level, medical_condition, contact_phone,
         contact_email, guardian_name, guardian_phone,
         signature_ipfs_hash, blockchain_hash, signature_verified, ocr_confidence,
-        status, status_updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP)
+        status, status_updated_at, hospital_display_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP, $18)
       RETURNING *`,
       [
         hospital_id,
@@ -310,7 +317,8 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         blockchainHash,
         ocrResult.match,
         ocrResult.confidence,
-        'Waiting'
+        'Waiting',
+        nextDisplayId
       ],
     );
 
@@ -339,7 +347,7 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
 router.post(
   "/:patient_id/signature",
   authenticateHospital,
-  async (req, res) => {
+  async (req: AuthRequest, res) => {
     try {
       const hospital_id = req.hospital?.hospital_id;
       const { patient_id } = req.params;
@@ -383,7 +391,7 @@ router.post(
 );
 
 // Update patient active status
-router.patch("/:patient_id/status", authenticateHospital, async (req, res) => {
+router.patch("/:patient_id/status", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { patient_id } = req.params;
@@ -419,7 +427,7 @@ router.patch("/:patient_id/status", authenticateHospital, async (req, res) => {
 });
 
 // Mark transplant as completed
-router.patch("/:patient_id/complete-transplant", authenticateHospital, async (req, res) => {
+router.patch("/:patient_id/complete-transplant", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { patient_id } = req.params;
@@ -473,7 +481,7 @@ router.patch("/:patient_id/complete-transplant", authenticateHospital, async (re
 });
 
 // Update patient
-router.put("/:patient_id", authenticateHospital, async (req, res) => {
+router.put("/:patient_id", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { patient_id } = req.params;
@@ -544,7 +552,7 @@ router.put("/:patient_id", authenticateHospital, async (req, res) => {
 });
 
 // Delete patient
-router.delete("/:patient_id", authenticateHospital, async (req, res) => {
+router.delete("/:patient_id", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { patient_id } = req.params;

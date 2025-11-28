@@ -1,11 +1,11 @@
 import express from "express";
 import multer from "multer";
 import { pool } from "../config/database.js";
-import { authenticateHospital } from "../middleware/auth.js";
-import { blockchainService } from "../services/blockchain";
-import { ipfsService } from "../services/ipfs";
-import { ocrService } from "../services/ocr";
-import { aadhaarOCRService } from "../services/aadhaarOcr";
+import { authenticateHospital, AuthRequest } from "../middleware/auth.js";
+import { blockchainService } from "../services/blockchain.js";
+import { ipfsService } from "../services/ipfs.js";
+import { ocrService } from "../services/ocr.js";
+import { aadhaarOCRService } from "../services/aadhaarOcr.js";
 
 const router = express.Router();
 
@@ -25,7 +25,7 @@ const upload = multer({
 });
 
 // Get all donors for a hospital
-router.get("/", authenticateHospital, async (req, res) => {
+router.get("/", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
 
@@ -53,7 +53,7 @@ router.get("/", authenticateHospital, async (req, res) => {
 });
 
 // Get single donor
-router.get("/:donor_id", authenticateHospital, async (req, res) => {
+router.get("/:donor_id", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { donor_id } = req.params;
@@ -83,8 +83,8 @@ router.get("/:donor_id", authenticateHospital, async (req, res) => {
   }
 });
 
-// Register new donor with signature verification and blockchain
-router.post("/register", upload.single('signature'), authenticateHospital, async (req, res) => {
+// Register new donor
+router.post("/register", upload.single('signature'), authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const hospital_name = req.hospital?.hospital_name || 'Unknown Hospital';
@@ -93,34 +93,32 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       age,
       gender,
       blood_type,
-      date_of_birth,
-      national_id,
       organs_to_donate,
       medical_history,
       contact_phone,
       contact_email,
       guardian_name,
-      guardian_phone,
+      guardian_phone
     } = req.body;
 
     if (!req.file) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Signature image is required' 
+        error: 'Signature image is required'
       });
     }
 
     console.log('Processing donor registration for:', full_name);
-    
+
     // Parse organs_to_donate if it's a JSON string
     let parsedOrgans;
     try {
       parsedOrgans = typeof organs_to_donate === 'string' ? JSON.parse(organs_to_donate) : organs_to_donate;
     } catch (parseError) {
       console.error('Error parsing organs_to_donate:', parseError);
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Invalid organs_to_donate format' 
+        error: 'Invalid organs_to_donate format'
       });
     }
     console.log('Parsed organs:', parsedOrgans);
@@ -144,7 +142,7 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       console.log('Starting Aadhaar verification...');
       try {
         const aadhaarResult = await aadhaarOCRService.extractAadhaarData(req.file.buffer);
-        
+
         if (!aadhaarResult.success || !aadhaarResult.data) {
           return res.status(400).json({
             success: false,
@@ -203,9 +201,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         }
       } catch (aadhaarError) {
         console.error('Aadhaar verification failed:', aadhaarError);
-        return res.status(500).json({ 
-          success: false, 
-          error: 'Aadhaar verification service unavailable' 
+        return res.status(500).json({
+          success: false,
+          error: 'Aadhaar verification service unavailable'
         });
       }
     } else {
@@ -214,9 +212,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         console.log('Starting signature verification...');
         const extractedText = await ocrService.extractTextFromImage(req.file.buffer);
         ocrResult = ocrService.verifySignatureNameEnhanced(extractedText, full_name);
-        
+
         console.log('OCR verification result:', ocrResult);
-        
+
         if (!ocrResult.match) {
           return res.status(400).json({
             success: false,
@@ -228,7 +226,7 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
             }
           });
         }
-        ocrResult.verificationType = 'signature';
+        (ocrResult as any).verificationType = 'signature';
       } catch (ocrError) {
         console.error('OCR verification failed:', ocrError);
         // In development, allow bypass for demo purposes
@@ -236,9 +234,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
           console.warn('OCR bypass enabled for development');
           ocrResult = { match: true, confidence: 80, extractedName: full_name, verificationType: 'signature' };
         } else {
-          return res.status(500).json({ 
-            success: false, 
-            error: 'Signature verification service unavailable' 
+          return res.status(500).json({
+            success: false,
+            error: 'Signature verification service unavailable'
           });
         }
       }
@@ -252,7 +250,7 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         req.file.buffer,
         `signature-${full_name}-${Date.now()}.${req.file.mimetype.split('/')[1]}`,
         {
-          hospitalId: hospital_id.toString(),
+          hospitalId: hospital_id!.toString(),
           donorName: full_name.toString(),
           uploadDate: new Date().toISOString(),
           ocrVerified: ocrResult.match.toString(),
@@ -262,9 +260,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       console.log('Signature uploaded to IPFS:', ipfsCID);
     } catch (ipfsError) {
       console.error('IPFS upload failed:', ipfsError);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Failed to upload signature to IPFS' 
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to upload signature to IPFS'
       });
     }
 
@@ -272,15 +270,22 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
     let blockchainHash;
     try {
       console.log('Recording on blockchain...');
+      // Note: Using generatePatientHash for donors too as the structure is similar for hash generation
       const patientHash = blockchainService.generatePatientHash(
-        full_name, 
-        date_of_birth, 
-        national_id, 
+        full_name,
+        // Donors might not have DOB in the same way, but we use what we have or defaults
+        // If date_of_birth is not in donor schema, we might need to adjust this.
+        // Looking at the INSERT, there is no date_of_birth for donors, only age.
+        // We'll use age as a proxy or empty string if needed, but generatePatientHash expects a date string.
+        // Let's check what was passed before. It was using date_of_birth which was undefined!
+        // We should probably use age or a placeholder.
+        "1970-01-01", // Placeholder DOB since donors only have age
+        "DONOR-" + Date.now(), // Placeholder national ID
         blood_type
       );
       blockchainHash = await blockchainService.addVerifiedRecord(
-        patientHash, 
-        hospital_name, 
+        patientHash,
+        hospital_name,
         ipfsCID,
         verificationType,  // 'signature' or 'aadhaar'
         ocrResult.match    // OCR verification result
@@ -288,17 +293,24 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       console.log('Blockchain record created:', blockchainHash);
     } catch (blockchainError) {
       console.error('Blockchain recording failed:', blockchainError);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Failed to record on blockchain' 
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to record on blockchain'
       });
     }
+
+    // Calculate hospital_display_id
+    const maxIdResult = await pool.query(
+      "SELECT MAX(hospital_display_id) as max_id FROM donors WHERE hospital_id = $1",
+      [hospital_id]
+    );
+    const nextDisplayId = (maxIdResult.rows[0]?.max_id || 0) + 1;
 
     // Step 4: Save to database (donor_id auto-generated) with retry logic
     let result;
     let retryCount = 0;
     const maxRetries = 3;
-    
+
     while (retryCount < maxRetries) {
       try {
         console.log(`Attempting database insertion (attempt ${retryCount + 1}/${maxRetries})...`);
@@ -307,8 +319,8 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
             hospital_id, full_name, age, gender, blood_type,
             organs_to_donate, medical_history, contact_phone, 
             contact_email, guardian_name, guardian_phone, signature_ipfs_hash,
-            blockchain_hash, signature_verified, ocr_confidence
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            blockchain_hash, signature_verified, ocr_confidence, hospital_display_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
           RETURNING *`,
           [
             hospital_id,
@@ -325,20 +337,21 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
             ipfsCID,
             blockchainHash,
             ocrResult.match,
-            ocrResult.confidence
+            ocrResult.confidence,
+            nextDisplayId
           ]
         );
         console.log('✅ Database insertion successful!');
         break; // Success, exit retry loop
       } catch (dbError) {
         retryCount++;
-        console.error(`❌ Database insertion failed (attempt ${retryCount}/${maxRetries}):`, dbError.message);
-        
+        console.error(`❌ Database insertion failed (attempt ${retryCount}/${maxRetries}):`, (dbError as Error).message);
+
         if (retryCount >= maxRetries) {
           console.error('Max retries reached, giving up');
           throw dbError;
         }
-        
+
         // Wait before retrying (exponential backoff)
         const delay = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s
         console.log(`Waiting ${delay}ms before retry...`);
@@ -349,7 +362,7 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
     res.json({
       success: true,
       message: "Donor registered successfully with blockchain verification",
-      donor: result.rows[0],
+      donor: result?.rows[0],
       verification: {
         ocrVerified: ocrResult.match,
         confidence: ocrResult.confidence,
@@ -368,7 +381,7 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
 });
 
 // Update donor signature and blockchain info
-router.post("/:donor_id/signature", authenticateHospital, async (req, res) => {
+router.post("/:donor_id/signature", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { donor_id } = req.params;
@@ -411,7 +424,7 @@ router.post("/:donor_id/signature", authenticateHospital, async (req, res) => {
 });
 
 // Update donor status
-router.patch("/:donor_id/status", authenticateHospital, async (req, res) => {
+router.patch("/:donor_id/status", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { donor_id } = req.params;
@@ -447,7 +460,7 @@ router.patch("/:donor_id/status", authenticateHospital, async (req, res) => {
 });
 
 // Delete donor
-router.delete("/:donor_id", authenticateHospital, async (req, res) => {
+router.delete("/:donor_id", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { donor_id } = req.params;
@@ -478,7 +491,7 @@ router.delete("/:donor_id", authenticateHospital, async (req, res) => {
 });
 
 // Update donor
-router.put("/:donor_id", authenticateHospital, async (req, res) => {
+router.put("/:donor_id", authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { donor_id } = req.params;
