@@ -42,6 +42,11 @@ export function createServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Admin routes
+  app.use("/api/admin/auth", adminAuthRoutes);
+  app.use("/api/admin/hospitals", hospitalRoutes);
+  app.use("/api/admin/organizations", organizationRoutes);
+  app.use("/api/admin/dashboard", dashboardRoutes);
   app.use("/api/admin/logs", logsRoutes);
   app.use("/api/admin/blockchain", adminBlockchainRoutes);
   app.use("/api/admin/password-reset", adminPasswordResetRoutes);
