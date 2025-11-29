@@ -395,6 +395,23 @@ class HospitalAnalyticsService {
   async getOrganDemandData(hospitalId, dateFilter) {
     const query = `
       SELECT
+        p.organ_needed as organ,
+        COUNT(p.*) as patients,
+        COALESCE(d.donor_count, 0) as donors
+      FROM patients p
+      LEFT JOIN (
+        SELECT 
+          TRIM(unnest(organs_to_donate)) as organ,
+          COUNT(*) as donor_count
+        FROM donors 
+        WHERE hospital_id = $1 ${dateFilter} AND organs_to_donate IS NOT NULL
+        GROUP BY TRIM(unnest(organs_to_donate))
+      ) d ON p.organ_needed = d.organ
+      WHERE p.hospital_id = $1 ${dateFilter}
+      GROUP BY p.organ_needed, d.donor_count
+    `;
+    const result = await pool.query(query, [hospitalId]);
+    return result.rows.map(row => ({
       organ: row.organ,
       patients: parseInt(row.patients),
       donors: parseInt(row.donors) || 0
@@ -403,16 +420,16 @@ class HospitalAnalyticsService {
 
   async getUrgencyData(hospitalId, dateFilter) {
     const query = `
-    SELECT
-    urgency_level as urgency,
-      COUNT(*) as count
+      SELECT
+        urgency_level as urgency,
+        COUNT(*) as count
       FROM patients
-      WHERE hospital_id = $1 ${ dateFilter }
+      WHERE hospital_id = $1 ${dateFilter}
       GROUP BY urgency_level
-      `;
+    `;
     const result = await pool.query(query, [hospitalId]);
     const total = result.rows.reduce((sum, row) => sum + parseInt(row.count), 0);
-    
+
     return result.rows.map(row => ({
       urgency: row.urgency,
       count: parseInt(row.count),
@@ -430,22 +447,22 @@ class HospitalAnalyticsService {
 
   calculateGrowthRate(trends) {
     if (trends.length < 2) return 0;
-    
+
     const recent = trends.slice(-2);
     const oldValue = recent[0].patients || recent[0].donors || 0;
     const newValue = recent[1].patients || recent[1].donors || 0;
-    
+
     if (oldValue === 0) return newValue > 0 ? 100 : 0;
     return Math.round(((newValue - oldValue) / oldValue) * 100);
   }
 
   predictNextMonthRegistrations(trends, type) {
     if (trends.length === 0) return 0;
-    
+
     const growthRate = this.calculateGrowthRate(trends);
     const lastMonth = trends[trends.length - 1];
     const lastValue = lastMonth[type] || 0;
-    
+
     return Math.round(lastValue * (1 + (growthRate / 100)));
   }
 
@@ -459,7 +476,7 @@ class HospitalAnalyticsService {
   calculatePercentile(hospitalValue, industryAverage) {
     if (industryAverage === 0) return 50;
     const ratio = hospitalValue / industryAverage;
-    
+
     if (ratio >= 1.5) return 90;
     if (ratio >= 1.2) return 75;
     if (ratio >= 1.0) return 60;
@@ -477,7 +494,7 @@ class HospitalAnalyticsService {
   getDefaultInsights() {
     return {
       performanceScore: 75,
-      trendAnalysis: { patient: { trend: 'stable', growthRate: 0 }, donor: { trend: 'stable', growthRate: 0 }},
+      trendAnalysis: { patient: { trend: 'stable', growthRate: 0 }, donor: { trend: 'stable', growthRate: 0 } },
       demandPrediction: {},
       riskAssessment: [],
       recommendations: [],
