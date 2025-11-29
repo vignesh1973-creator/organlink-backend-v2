@@ -5,9 +5,9 @@
   "main": "index.ts",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch index.ts",
+    "dev": "tsx watch server.ts",
     "build": "tsc",
-    "start": "ts-node index.ts",
+    "start": "tsx server.ts",
     "migrate:latest": "echo 'Migrations completed'",
     "lint": "eslint . --ext .ts",
     "test": "echo 'No tests specified'"

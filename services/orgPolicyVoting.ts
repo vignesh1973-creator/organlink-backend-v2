@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { pool } from "../config/database";
 
 // OrganPolicyManager_Lite contract ABI
 const ORG_POLICY_VOTING_ABI = [
@@ -157,7 +158,7 @@ export class OrgPolicyVotingService {
     this.adminWallet = new ethers.Wallet(privateKey, this.provider);
 
     this.contractAddress = process.env.POLICY_CONTRACT_ADDRESS || "0x48c49012e7e2a4f3da63eb45dd8bea7a6819ec1b";
-    
+
     this.contract = new ethers.Contract(
       this.contractAddress,
       ORG_POLICY_VOTING_ABI,
@@ -189,9 +190,9 @@ export class OrgPolicyVotingService {
       // Try to register on blockchain
       const tx = await this.contract.registerOrganization(orgAddress, orgName, "Policy Organization");
       const receipt = await tx.wait();
-      
+
       console.log(`✅ Organization registered: ${receipt.hash}`);
-      
+
       return {
         success: true,
         txHash: receipt.hash,
@@ -208,7 +209,7 @@ export class OrgPolicyVotingService {
           orgAddress
         };
       }
-      
+
       console.error("Error registering organization:", error);
       return {
         success: false,
@@ -233,7 +234,7 @@ export class OrgPolicyVotingService {
       } catch (e) {
         console.log(`Admin registration check/setup completed`);
       }
-      
+
       console.log(`Proposing policy "${title}" from admin wallet`);
 
       // Prepare details JSON
@@ -252,7 +253,7 @@ export class OrgPolicyVotingService {
             topics: [...log.topics],
             data: log.data
           });
-          
+
           if (parsed && parsed.name === "PolicyProposed") {
             policyId = Number(parsed.args.policyId);
             console.log(`✅ Policy proposed with ID: ${policyId}`);
@@ -266,6 +267,28 @@ export class OrgPolicyVotingService {
       // If no policy ID from events, query contract
       if (!policyId) {
         policyId = Number(await this.contract.getTotalPolicies());
+      }
+
+      // Log to database
+      try {
+        const gasUsed = receipt.gasUsed ? Number(receipt.gasUsed) : 0;
+        const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : 0;
+        const gasFee = ethers.formatEther(BigInt(gasUsed) * BigInt(gasPrice));
+
+        await pool.query(
+          `INSERT INTO blockchain_events (event_type, transaction_hash, block_number, gas_used, gas_fee, status)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            'PolicyProposed',
+            receipt.hash,
+            receipt.blockNumber,
+            gasUsed,
+            Number(gasFee),
+            'confirmed'
+          ]
+        );
+      } catch (dbError) {
+        console.error('Failed to log event to database:', dbError);
       }
 
       return {
@@ -292,6 +315,28 @@ export class OrgPolicyVotingService {
 
       console.log(`✅ Vote submitted: ${receipt.hash}`);
 
+      // Log to database
+      try {
+        const gasUsed = receipt.gasUsed ? Number(receipt.gasUsed) : 0;
+        const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : 0;
+        const gasFee = ethers.formatEther(BigInt(gasUsed) * BigInt(gasPrice));
+
+        await pool.query(
+          `INSERT INTO blockchain_events (event_type, transaction_hash, block_number, gas_used, gas_fee, status)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            'Voted',
+            receipt.hash,
+            receipt.blockNumber,
+            gasUsed,
+            Number(gasFee),
+            'confirmed'
+          ]
+        );
+      } catch (dbError) {
+        console.error('Failed to log event to database:', dbError);
+      }
+
       return {
         success: true,
         txHash: receipt.hash
@@ -310,7 +355,7 @@ export class OrgPolicyVotingService {
     try {
       const policy = await this.contract.getPolicy(policyId);
       // policy returns: id, title, organType, description, details, yesVotes, noVotes, finalized, approved
-      
+
       return {
         success: true,
         policy: {

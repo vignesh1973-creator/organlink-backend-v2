@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { pool } from "../config/database";
 
 // OrganLink Registry ABI (OrganLinkRegistry.sol) - Enhanced with Aadhaar + OCR verification
 const ORGANLINK_REGISTRY_ABI = [
@@ -338,7 +339,7 @@ export class BlockchainService {
     const registryAddress =
       process.env.ORGANLINK_REGISTRY_ADDRESS ||
       "0xFf0398328fc43d500536D03f3FEBCa0F66A528eC";
-    
+
     this.organLinkRegistry = new ethers.Contract(
       registryAddress,
       ORGANLINK_REGISTRY_ABI,
@@ -347,7 +348,7 @@ export class BlockchainService {
   }
 
   // ========== Policy Governance (OrgPolicyVoting.sol) ==========
-  
+
   // Add organization to voting contract (admin only on contract side)
   async addOrganization(orgAddress: string, name: string): Promise<string> {
     try {
@@ -402,7 +403,7 @@ export class BlockchainService {
   // The registry contract handles both record storage AND OCR verification
 
   // ========== OrganLink Registry ==========
-  
+
   // Generate patient hash using the same pattern as in the workflow
   generatePatientHash(name: string, dob: string, id: string, bloodGroup: string): string {
     const dataString = `${name}|${dob}|${id}|${bloodGroup}`;
@@ -411,70 +412,110 @@ export class BlockchainService {
 
   // Add a verified record to blockchain (enhanced with verification type)
   async addVerifiedRecord(
-    patientHash: string, 
-    hospitalName: string, 
+    patientHash: string,
+    hospitalName: string,
     ipfsCID: string,
     verificationType: string = 'signature',
     ocrVerified: boolean = false
   ): Promise<string> {
     try {
-      console.log('Adding record to blockchain:', { 
-        patientHash, 
-        hospitalName, 
-        ipfsCID, 
-        verificationType, 
-        ocrVerified 
+      console.log('Adding record to blockchain:', {
+        patientHash,
+        hospitalName,
+        ipfsCID,
+        verificationType,
+        ocrVerified
       });
-      
+
       // Validate inputs
       if (!patientHash || !hospitalName || !ipfsCID) {
         throw new Error('Missing required parameters for blockchain record');
       }
-      
+
       // Validate verification type
       if (verificationType !== 'signature' && verificationType !== 'aadhaar') {
         console.warn(`Invalid verification type: ${verificationType}, defaulting to 'signature'`);
         verificationType = 'signature';
       }
-      
+
       // Ensure parameters are correct types
       const hashString = patientHash.toString();
       const nameString = hospitalName.toString();
       const typeString = verificationType.toString();
       const verifiedBool = Boolean(ocrVerified);
       const cidString = ipfsCID.toString();
-      
-      console.log('Calling contract with:', { 
-        hashString, 
-        nameString, 
-        typeString, 
-        verifiedBool, 
-        cidString 
+
+      console.log('Calling contract with:', {
+        hashString,
+        nameString,
+        typeString,
+        verifiedBool,
+        cidString
       });
-      
+
       const tx = await this.organLinkRegistry.addVerifiedRecord(
-        hashString, 
-        nameString, 
+        hashString,
+        nameString,
         typeString,
         verifiedBool,
         cidString
       );
       console.log('Transaction sent:', tx.hash);
-      
+
       const receipt = await tx.wait();
       console.log('Transaction mined:', receipt.hash);
-      
+
+      // Log to database
+      try {
+        const gasUsed = receipt.gasUsed ? Number(receipt.gasUsed) : 0;
+        const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : 0;
+        const gasFee = ethers.formatEther(BigInt(gasUsed) * BigInt(gasPrice));
+
+        await pool.query(
+          `INSERT INTO blockchain_events (event_type, transaction_hash, block_number, gas_used, gas_fee, status)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            'RecordAdded',
+            receipt.hash,
+            receipt.blockNumber,
+            gasUsed,
+            Number(gasFee),
+            'confirmed'
+          ]
+        );
+        console.log('Event logged to database');
+      } catch (dbError) {
+        console.error('Failed to log event to database:', dbError);
+      }
+
       return receipt.hash;
     } catch (error) {
       console.error('Blockchain error:', error);
-      
+
       // For development, return a mock hash if blockchain fails
       if (process.env.NODE_ENV === 'development') {
         console.warn('Using mock blockchain hash for development');
         const mockHash = `0x${Date.now().toString(16).padEnd(64, '0')}`;
+
+        // Log mock event
+        try {
+          await pool.query(
+            `INSERT INTO blockchain_events (event_type, transaction_hash, block_number, gas_used, gas_fee, status)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              'RecordAdded (Mock)',
+              mockHash,
+              123456,
+              21000,
+              0.001,
+              'confirmed'
+            ]
+          );
+        } catch (e) { }
+
         return mockHash;
       }
-      
+
       throw new Error(`Failed to add record to blockchain: ${error}`);
     }
   }
