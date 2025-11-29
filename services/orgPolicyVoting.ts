@@ -203,7 +203,8 @@ export class OrgPolicyVotingService {
       console.log(`Registering organization: ${orgName} with address ${orgAddress}`);
 
       // Try to register on blockchain
-      const tx = await this.contract.registerOrganization(orgAddress, orgName, "Policy Organization");
+      // Manually set gas limit
+      const tx = await this.contract.registerOrganization(orgAddress, orgName, "Policy Organization", { gasLimit: 500000 });
       const receipt = await tx.wait();
 
       console.log(`✅ Organization registered: ${receipt.hash}`);
@@ -238,18 +239,26 @@ export class OrgPolicyVotingService {
   // Propose a policy (called by organization)
   async proposePolicy(orgName: string, title: string, description: string, detailsJSON?: string, votingDays?: number): Promise<{ success: boolean; policyId?: number; txHash?: string; error?: string }> {
     try {
+      // Check Admin Balance
+      const balance = await this.provider.getBalance(this.adminWallet.address);
+      console.log(`Admin Wallet Balance: ${ethers.formatEther(balance)} ETH`);
+
       // Ensure admin is registered as an organization first
       try {
         const adminAddress = this.adminWallet.address;
         const orgCheck = await this.contract.organizations(adminAddress);
+        console.log(`Admin registration check: ${orgCheck.isRegistered}`);
+
         if (!orgCheck.isRegistered) {
           console.log(`Registering admin wallet as organization...`);
-          const regTx = await this.contract.registerOrganization(adminAddress, "Admin Organization", "System");
+          // Manually set gas limit to avoid estimation errors
+          const regTx = await this.contract.registerOrganization(adminAddress, "Admin Organization", "System", { gasLimit: 500000 });
           await regTx.wait();
           console.log(`✅ Admin registered as organization`);
         }
-      } catch (e) {
-        console.log(`Admin registration check/setup completed`);
+      } catch (e: any) {
+        console.warn(`Admin registration check/setup failed: ${e.message}`);
+        // We continue, but if admin isn't registered, proposePolicy will likely fail
       }
 
       console.log(`Proposing policy "${title}" from admin wallet`);
@@ -259,7 +268,8 @@ export class OrgPolicyVotingService {
       const days = votingDays || 7;
 
       // Call contract with admin wallet
-      const tx = await this.contract.proposePolicy(title, "Kidney", description, details, days);
+      // Manually set gas limit to avoid estimation errors if the node is strict
+      const tx = await this.contract.proposePolicy(title, "Kidney", description, details, days, { gasLimit: 1000000 });
       const receipt = await tx.wait();
 
       // Extract policy ID from event
