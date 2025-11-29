@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
-import { handleDemo } from "./routes/demo";
+
 import adminAuthRoutes from "./routes/admin-auth";
 import hospitalRoutes from "./routes/hospitals";
 import organizationRoutes from "./routes/organizations";
@@ -42,19 +42,6 @@ export function createServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Example API routes
-  app.get("/api/ping", (_req, res) => {
-    const ping = process.env.PING_MESSAGE ?? "ping";
-    res.json({ message: ping });
-  });
-
-  app.get("/api/demo", handleDemo);
-
-  // Admin routes
-  app.use("/api/admin/auth", adminAuthRoutes);
-  app.use("/api/admin/hospitals", hospitalRoutes);
-  app.use("/api/admin/organizations", organizationRoutes);
-  app.use("/api/admin/dashboard", dashboardRoutes);
   app.use("/api/admin/logs", logsRoutes);
   app.use("/api/admin/blockchain", adminBlockchainRoutes);
   app.use("/api/admin/password-reset", adminPasswordResetRoutes);
