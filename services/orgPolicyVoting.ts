@@ -204,7 +204,7 @@ export class OrgPolicyVotingService {
 
       // Try to register on blockchain
       // Manually set gas limit
-      const tx = await this.contract.registerOrganization(orgAddress, orgName, "Policy Organization", { gasLimit: 500000 });
+      const tx = await this.contract.registerOrganization(orgAddress, orgName, "Policy Organization", { gasLimit: 1000000 });
       const receipt = await tx.wait();
 
       console.log(`✅ Organization registered: ${receipt.hash}`);
@@ -252,9 +252,9 @@ export class OrgPolicyVotingService {
         if (!orgCheck.isRegistered) {
           console.log(`Registering admin wallet as organization...`);
           // Manually set gas limit to avoid estimation errors
-          const regTx = await this.contract.registerOrganization(adminAddress, "Admin Organization", "System", { gasLimit: 500000 });
-          await regTx.wait();
-          console.log(`✅ Admin registered as organization`);
+          const regTx = await this.contract.registerOrganization(adminAddress, "Admin Organization", "System", { gasLimit: 1000000 });
+          const regReceipt = await regTx.wait();
+          console.log(`✅ Admin registered as organization (Block: ${regReceipt.blockNumber})`);
         }
       } catch (e: any) {
         console.warn(`Admin registration check/setup failed: ${e.message}`);
@@ -269,7 +269,8 @@ export class OrgPolicyVotingService {
 
       // Call contract with admin wallet
       // Manually set gas limit to avoid estimation errors if the node is strict
-      const tx = await this.contract.proposePolicy(title, "Kidney", description, details, days, { gasLimit: 1000000 });
+      // Increased to 5,000,000 to prevent Out of Gas errors with large IPFS strings
+      const tx = await this.contract.proposePolicy(title, "Kidney", description, details, days, { gasLimit: 5000000 });
       const receipt = await tx.wait();
 
       // Extract policy ID from event
