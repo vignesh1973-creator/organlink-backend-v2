@@ -115,22 +115,11 @@ router.get("/", authenticateHospital, async (req, res) => {
 
     const organDonorsQuery = `
       SELECT
-        CASE
-          WHEN jsonb_typeof(organs_to_donate::jsonb) = 'array' THEN
-            TRIM(jsonb_array_elements_text(organs_to_donate::jsonb))
-          ELSE
-            TRIM(organs_to_donate::text, '"')
-        END as organ,
+        TRIM(unnest(organs_to_donate)) as organ,
         COUNT(*) as donors
       FROM donors
       WHERE hospital_id = $1 ${dateFilter} AND organs_to_donate IS NOT NULL
-      GROUP BY 
-        CASE
-          WHEN jsonb_typeof(organs_to_donate::jsonb) = 'array' THEN
-            TRIM(jsonb_array_elements_text(organs_to_donate::jsonb))
-          ELSE
-            TRIM(organs_to_donate::text, '"')
-        END
+      GROUP BY TRIM(unnest(organs_to_donate))
     `;
 
     let organPatientsResult, organDonorsResult;
@@ -372,9 +361,9 @@ router.get("/ai-insights", authenticateHospital, async (req, res) => {
     });
   } catch (error) {
     console.error("AI insights fetch error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: "Failed to generate AI insights" 
+      error: "Failed to generate AI insights"
     });
   }
 });

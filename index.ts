@@ -25,6 +25,7 @@ import organizationPoliciesRoutes from "./routes/organization-policies";
 
 export function createServer() {
   const app = express();
+  app.set("trust proxy", 1); // Trust Render load balancer
 
   // Middleware
   const corsOrigin = process.env.CORS_ORIGIN || "*";

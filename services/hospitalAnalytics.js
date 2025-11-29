@@ -7,11 +7,11 @@ class HospitalAnalyticsService {
   async generateInsights(hospitalId, dateRange = '6months') {
     try {
       const dateFilter = this.getDateFilter(dateRange);
-      
+
       // Get comprehensive data
       const [
         patientTrends,
-        donorTrends, 
+        donorTrends,
         matchingData,
         organDemand,
         urgencyData,
@@ -49,23 +49,23 @@ class HospitalAnalyticsService {
    */
   calculatePerformanceScore(patientTrends, donorTrends, matchingData) {
     let score = 0;
-    
+
     // Patient registration growth (25 points)
     const patientGrowth = this.calculateGrowthRate(patientTrends);
     score += Math.min(25, Math.max(0, 15 + patientGrowth * 2));
-    
+
     // Donor registration growth (25 points) 
     const donorGrowth = this.calculateGrowthRate(donorTrends);
     score += Math.min(25, Math.max(0, 15 + donorGrowth * 2));
-    
+
     // Matching success rate (30 points)
     const successRate = matchingData.successfulMatches / Math.max(1, matchingData.totalRequests);
     score += successRate * 30;
-    
+
     // Response time efficiency (20 points)
     const efficiency = matchingData.averageResponseTime <= 24 ? 20 : Math.max(0, 20 - matchingData.averageResponseTime);
     score += Math.min(20, efficiency);
-    
+
     return Math.round(score);
   }
 
@@ -75,15 +75,15 @@ class HospitalAnalyticsService {
   analyzeTrends(patientTrends, donorTrends) {
     const patientGrowth = this.calculateGrowthRate(patientTrends);
     const donorGrowth = this.calculateGrowthRate(donorTrends);
-    
+
     let patientTrendText = patientGrowth > 5 ? 'significantly increasing' :
-                          patientGrowth > 0 ? 'increasing' :
-                          patientGrowth > -5 ? 'stable' : 'decreasing';
-                          
+      patientGrowth > 0 ? 'increasing' :
+        patientGrowth > -5 ? 'stable' : 'decreasing';
+
     let donorTrendText = donorGrowth > 5 ? 'significantly increasing' :
-                        donorGrowth > 0 ? 'increasing' : 
-                        donorGrowth > -5 ? 'stable' : 'decreasing';
-    
+      donorGrowth > 0 ? 'increasing' :
+        donorGrowth > -5 ? 'stable' : 'decreasing';
+
     return {
       patient: {
         trend: patientTrendText,
@@ -103,13 +103,13 @@ class HospitalAnalyticsService {
    */
   predictOrganDemand(organDemand) {
     const predictions = {};
-    
+
     organDemand.forEach(organ => {
       const demandRatio = organ.patients / Math.max(1, organ.donors);
       const urgency = demandRatio > 3 ? 'Critical' :
-                     demandRatio > 2 ? 'High' :
-                     demandRatio > 1.5 ? 'Medium' : 'Low';
-                     
+        demandRatio > 2 ? 'High' :
+          demandRatio > 1.5 ? 'Medium' : 'Low';
+
       predictions[organ.organ] = {
         currentDemand: organ.patients,
         currentSupply: organ.donors,
@@ -119,7 +119,7 @@ class HospitalAnalyticsService {
         recommendation: this.getOrganRecommendation(demandRatio)
       };
     });
-    
+
     return predictions;
   }
 
@@ -128,7 +128,7 @@ class HospitalAnalyticsService {
    */
   assessRisks(urgencyData, matchingData) {
     const risks = [];
-    
+
     // High critical patient ratio
     const criticalRatio = urgencyData.find(u => u.urgency === 'Critical')?.percentage || 0;
     if (criticalRatio > 30) {
@@ -139,7 +139,7 @@ class HospitalAnalyticsService {
         recommendation: 'Increase staffing and prioritize urgent matching'
       });
     }
-    
+
     // Low matching success rate
     if (matchingData.successRate < 50) {
       risks.push({
@@ -149,7 +149,7 @@ class HospitalAnalyticsService {
         recommendation: 'Review matching criteria and expand donor network'
       });
     }
-    
+
     // High pending requests
     const pendingRatio = matchingData.pendingRequests / Math.max(1, matchingData.totalRequests);
     if (pendingRatio > 0.4) {
@@ -160,7 +160,7 @@ class HospitalAnalyticsService {
         recommendation: 'Implement faster processing workflows'
       });
     }
-    
+
     return risks;
   }
 
@@ -169,7 +169,7 @@ class HospitalAnalyticsService {
    */
   generateRecommendations(patientTrends, donorTrends, matchingData, organDemand) {
     const recommendations = [];
-    
+
     // Donor recruitment
     const donorGrowth = this.calculateGrowthRate(donorTrends);
     if (donorGrowth < 2) {
@@ -181,22 +181,22 @@ class HospitalAnalyticsService {
         timeline: '1-2 months'
       });
     }
-    
+
     // Organ-specific campaigns
     const highDemandOrgans = organDemand
       .filter(organ => (organ.patients / Math.max(1, organ.donors)) > 2)
       .map(organ => organ.organ);
-      
+
     if (highDemandOrgans.length > 0) {
       recommendations.push({
-        category: 'Organ-Specific Outreach', 
+        category: 'Organ-Specific Outreach',
         priority: 'High',
         action: `Focus recruitment on ${highDemandOrgans.join(', ')} donors`,
         expectedImpact: 'Balance organ supply-demand ratios',
         timeline: '2-3 months'
       });
     }
-    
+
     // Matching efficiency
     if (matchingData.successRate < 70) {
       recommendations.push({
@@ -207,19 +207,19 @@ class HospitalAnalyticsService {
         timeline: '1 month'
       });
     }
-    
+
     // Patient care optimization
     const patientGrowth = this.calculateGrowthRate(patientTrends);
     if (patientGrowth > 10) {
       recommendations.push({
         category: 'Capacity Planning',
-        priority: 'High', 
+        priority: 'High',
         action: 'Expand patient care capacity and staff',
         expectedImpact: 'Handle 25% more patients efficiently',
         timeline: '2-4 months'
       });
     }
-    
+
     return recommendations;
   }
 
@@ -228,7 +228,7 @@ class HospitalAnalyticsService {
    */
   calculateEfficiencyMetrics(matchingData, patientTrends) {
     const totalPatients = patientTrends.reduce((sum, month) => sum + month.patients, 0);
-    
+
     return {
       patientThroughput: Math.round(totalPatients / Math.max(1, patientTrends.length)),
       matchingEfficiency: Math.round(matchingData.successRate),
@@ -266,10 +266,10 @@ class HospitalAnalyticsService {
           GROUP BY h.hospital_id
         ) hospital_stats
       `;
-      
+
       const result = await pool.query(benchmarkQuery, [hospitalId]);
       const benchmark = result.rows[0];
-      
+
       // Get current hospital stats
       const currentStatsQuery = `
         SELECT 
@@ -280,10 +280,10 @@ class HospitalAnalyticsService {
         LEFT JOIN donors d ON h.hospital_id = d.hospital_id
         WHERE h.hospital_id = $1
       `;
-      
+
       const currentResult = await pool.query(currentStatsQuery, [hospitalId]);
       const current = currentResult.rows[0];
-      
+
       return {
         patients: {
           hospital: parseInt(current.current_patients) || 0,
@@ -313,14 +313,14 @@ class HospitalAnalyticsService {
   generatePredictions(patientTrends, donorTrends, organDemand) {
     const patientGrowth = this.calculateGrowthRate(patientTrends);
     const donorGrowth = this.calculateGrowthRate(donorTrends);
-    
+
     const lastMonth = patientTrends[patientTrends.length - 1];
     const predictions = [];
-    
+
     for (let i = 1; i <= 3; i++) {
       const predictedPatients = Math.round(lastMonth?.patients * (1 + (patientGrowth / 100)) ** i) || 0;
       const predictedDonors = Math.round(lastMonth?.donors * (1 + (donorGrowth / 100)) ** i) || 0;
-      
+
       predictions.push({
         month: this.getNextMonthName(i),
         patients: predictedPatients,
@@ -329,7 +329,7 @@ class HospitalAnalyticsService {
         confidence: Math.max(60, 90 - (i * 10)) // Decreasing confidence over time
       });
     }
-    
+
     return predictions;
   }
 
@@ -382,7 +382,7 @@ class HospitalAnalyticsService {
     // Simplified matching data - in real implementation, use organ_requests table
     const patientsResult = await pool.query(`SELECT COUNT(*) as count FROM patients WHERE hospital_id = $1 ${dateFilter}`, [hospitalId]);
     const totalRequests = parseInt(patientsResult.rows[0].count) || 0;
-    
+
     return {
       totalRequests,
       successfulMatches: Math.floor(totalRequests * 0.75), // 75% success rate
@@ -395,23 +395,6 @@ class HospitalAnalyticsService {
   async getOrganDemandData(hospitalId, dateFilter) {
     const query = `
       SELECT
-        p.organ_needed as organ,
-        COUNT(p.*) as patients,
-        COALESCE(d.donor_count, 0) as donors
-      FROM patients p
-      LEFT JOIN (
-        SELECT 
-          TRIM(unnest(string_to_array(organs_to_donate, ','))) as organ,
-          COUNT(*) as donor_count
-        FROM donors 
-        WHERE hospital_id = $1 ${dateFilter}
-        GROUP BY TRIM(unnest(string_to_array(organs_to_donate, ',')))
-      ) d ON p.organ_needed = d.organ
-      WHERE p.hospital_id = $1 ${dateFilter}
-      GROUP BY p.organ_needed, d.donor_count
-    `;
-    const result = await pool.query(query, [hospitalId]);
-    return result.rows.map(row => ({
       organ: row.organ,
       patients: parseInt(row.patients),
       donors: parseInt(row.donors) || 0
@@ -420,13 +403,13 @@ class HospitalAnalyticsService {
 
   async getUrgencyData(hospitalId, dateFilter) {
     const query = `
-      SELECT
-        urgency_level as urgency,
-        COUNT(*) as count
+    SELECT
+    urgency_level as urgency,
+      COUNT(*) as count
       FROM patients
-      WHERE hospital_id = $1 ${dateFilter}
+      WHERE hospital_id = $1 ${ dateFilter }
       GROUP BY urgency_level
-    `;
+      `;
     const result = await pool.query(query, [hospitalId]);
     const total = result.rows.reduce((sum, row) => sum + parseInt(row.count), 0);
     
