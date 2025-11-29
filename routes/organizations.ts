@@ -196,6 +196,11 @@ router.delete("/:id", async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
+    // Delete the votes (cascade might handle this, but explicit is safer given we updated counts)
+    // We do NOT decrement the policy counts - historical votes remain valid even if org is deleted
+    await pool.query("DELETE FROM policy_votes WHERE organization_id = $1", [id]);
+
+    // Now delete the organization
     const result = await pool.query(
       "DELETE FROM organizations WHERE organization_id = $1 RETURNING name",
       [id],

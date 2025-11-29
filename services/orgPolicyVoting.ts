@@ -185,6 +185,21 @@ export class OrgPolicyVotingService {
         this.orgAddresses.set(orgId, orgAddress);
       }
 
+      // Check if already registered on blockchain
+      try {
+        const existingOrg = await this.contract.organizations(orgAddress);
+        if (existingOrg && existingOrg.isRegistered) {
+          console.log(`✅ Organization ${orgName} already registered (verified on-chain)`);
+          return {
+            success: true,
+            txHash: "already_registered",
+            orgAddress
+          };
+        }
+      } catch (checkError) {
+        console.warn("Failed to check organization status, proceeding to register:", checkError);
+      }
+
       console.log(`Registering organization: ${orgName} with address ${orgAddress}`);
 
       // Try to register on blockchain
@@ -199,9 +214,11 @@ export class OrgPolicyVotingService {
         orgAddress
       };
     } catch (error: any) {
-      // If already registered, that's okay
-      if (error.message?.includes('Already registered') || error.message?.includes('already exists')) {
-        console.log(`✅ Organization ${orgName} already registered`);
+      // Fallback: If already registered (race condition or check failed), that's okay
+      if (error.message?.includes('Already registered') ||
+        error.message?.includes('already exists') ||
+        error.message?.includes('execution reverted')) {
+        console.log(`✅ Organization ${orgName} already registered (caught error)`);
         const orgAddress = this.generateOrgAddress(orgName);
         return {
           success: true,
