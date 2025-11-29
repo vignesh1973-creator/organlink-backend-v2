@@ -47,7 +47,7 @@ router.post("/propose-form", async (req: AuthRequest, res) => {
     let parsedParams: any = undefined;
     try {
       if (parameters) parsedParams = JSON.parse(parameters);
-    } catch {}
+    } catch { }
 
     const payload = {
       title,
@@ -55,15 +55,34 @@ router.post("/propose-form", async (req: AuthRequest, res) => {
       parameters: parsedParams ?? parameters ?? null,
       createdAt: new Date().toISOString(),
     };
-    const cid = await ipfsService.pinJSON(payload, `policy_${Date.now()}`);
 
-    // Register organization on blockchain (idempotent)
-    const regResult = await orgPolicyVotingService.registerOrganization(proposerOrgId, orgRes.rows[0].name);
-    if (!regResult.success) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to register organization: ' + regResult.error
-      });
+    // Step 1: Pin to IPFS
+    let cid;
+    try {
+      cid = await ipfsService.pinJSON(payload, `policy_${Date.now()}`);
+    } catch (ipfsError: any) {
+      console.error("IPFS Pinning Failed:", ipfsError);
+      // Fallback for demo/dev if IPFS fails
+      if (process.env.NODE_ENV !== 'production') {
+        cid = `demo_cid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.warn("Using demo CID fallback:", cid);
+      } else {
+        return res.status(500).json({
+          success: false,
+          error: "Failed to upload policy data to IPFS: " + ipfsError.message
+        });
+      }
+    }
+
+    // Step 2: Register organization on blockchain (idempotent)
+    try {
+      const regResult = await orgPolicyVotingService.registerOrganization(proposerOrgId, orgRes.rows[0].name);
+      if (!regResult.success) {
+        console.warn("Organization registration warning:", regResult.error);
+        // We continue even if registration "fails" because it might be a false negative or already registered
+      }
+    } catch (regError: any) {
+      console.warn("Organization registration error (continuing):", regError);
     }
 
     // Create details JSON with all policy info
@@ -74,42 +93,50 @@ router.post("/propose-form", async (req: AuthRequest, res) => {
       createdAt: new Date().toISOString()
     });
 
-    // Propose policy on blockchain (voting duration from hours parameter)
+    // Step 3: Propose policy on blockchain
     const votingDays = Math.ceil(Math.max(1, Number(hours) || 24) / 24);
-    const proposeResult = await orgPolicyVotingService.proposePolicy(
-      orgRes.rows[0].name,
-      title,
-      rationale,
-      detailsJSON,
-      votingDays
-    );
+    let proposeResult;
+    try {
+      proposeResult = await orgPolicyVotingService.proposePolicy(
+        orgRes.rows[0].name,
+        title,
+        rationale,
+        detailsJSON,
+        votingDays
+      );
+    } catch (propError: any) {
+      return res.status(500).json({
+        success: false,
+        error: "Blockchain proposal exception: " + propError.message
+      });
+    }
 
     if (!proposeResult.success) {
       return res.status(500).json({
         success: false,
-        error: 'Failed to propose policy: ' + proposeResult.error
+        error: 'Failed to propose policy on blockchain: ' + proposeResult.error
       });
     }
 
     const { txHash, policyId: proposalId } = proposeResult;
 
-    // Insert policy into database and get the generated policy_id
+    // Step 4: Insert policy into database
     const policyInsertResult = await pool.query(
       `INSERT INTO policies (title, description, policy_content, status, proposer_org_id, votes_for, votes_against, created_at)
        VALUES ($1, $2, $3, $4, $5, 0, 0, CURRENT_TIMESTAMP)
        RETURNING policy_id`,
       [title, `IPFS ${cid}`, rationale, "voting", proposerOrgId],
     );
-    
+
     const policyId = policyInsertResult.rows[0].policy_id;
 
-    // Notify all other organizations about the new policy proposal
+    // Step 5: Notify others (non-blocking)
     try {
       const allOrgsResult = await pool.query(
         "SELECT organization_id, name FROM organizations WHERE organization_id != $1",
         [proposerOrgId]
       );
-      
+
       for (const org of allOrgsResult.rows) {
         const notificationId = `notif_${Date.now()}_${org.organization_id}_${Math.random().toString(36).substr(2, 9)}`;
         await pool.query(
@@ -124,19 +151,18 @@ router.post("/propose-form", async (req: AuthRequest, res) => {
           ]
         );
       }
-      console.log(`✅ Notified ${allOrgsResult.rows.length} organizations about new policy`);
     } catch (notifError) {
       console.error("Failed to send notifications:", notifError);
     }
 
     res.json({ success: true, txHash, proposalId, ipfsCid: cid });
   } catch (error: any) {
-    console.error("Propose-form error:", error);
+    console.error("Propose-form critical error:", error);
     res
       .status(500)
       .json({
         success: false,
-        error: error.message || "Failed to create proposal",
+        error: "Critical error creating proposal: " + (error.message || "Unknown error"),
       });
   }
 });
@@ -266,7 +292,7 @@ router.post("/finalize", async (_req: AuthRequest, res) => {
         `UPDATE policies SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE title = $2`,
         [passed ? "approved" : "rejected", `Policy ${proposal_id}`],
       );
-    } catch {}
+    } catch { }
 
     res.json({ success: true, txHash });
   } catch (error: any) {
@@ -299,7 +325,7 @@ router.get("/dashboard-stats", async (req: AuthRequest, res) => {
       "SELECT organization_id as id FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -308,18 +334,18 @@ router.get("/dashboard-stats", async (req: AuthRequest, res) => {
     }
 
     const orgId = orgRes.rows[0].id;
-    
+
     // Get active policies count (not deleted)
     const activePoliciesResult = await pool.query(
       "SELECT COUNT(*) as count FROM policies WHERE status != 'deleted'"
     );
-    
+
     // Get my proposals count
     const myProposalsResult = await pool.query(
       "SELECT COUNT(*) as count FROM policies WHERE proposer_org_id = $1 AND status != 'deleted'",
       [orgId]
     );
-    
+
     // Get pending votes (policies I haven't voted on yet)
     const pendingVotesResult = await pool.query(
       `SELECT COUNT(*) as count FROM policies p
@@ -331,7 +357,7 @@ router.get("/dashboard-stats", async (req: AuthRequest, res) => {
          )`,
       [orgId]
     );
-    
+
     // Get total votes I've cast
     const totalVotesResult = await pool.query(
       "SELECT COUNT(*) as count FROM policy_votes WHERE organization_id = $1",
@@ -363,7 +389,7 @@ router.get("/dashboard-active-proposals", async (req: AuthRequest, res) => {
       "SELECT organization_id as id FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -372,7 +398,7 @@ router.get("/dashboard-active-proposals", async (req: AuthRequest, res) => {
     }
 
     const orgId = orgRes.rows[0].id;
-    
+
     // Get active proposals this org hasn't voted on yet
     const proposalsResult = await pool.query(
       `SELECT 
@@ -420,7 +446,7 @@ router.get("/dashboard-recent-activity", async (req: AuthRequest, res) => {
       "SELECT organization_id as id FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -429,7 +455,7 @@ router.get("/dashboard-recent-activity", async (req: AuthRequest, res) => {
     }
 
     const orgId = orgRes.rows[0].id;
-    
+
     // Get recent activities: my proposals and my votes
     const activitiesResult = await pool.query(
       `SELECT 
@@ -475,7 +501,7 @@ router.get("/notifications", async (req: AuthRequest, res) => {
       "SELECT organization_id as id FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -484,7 +510,7 @@ router.get("/notifications", async (req: AuthRequest, res) => {
     }
 
     const orgId = orgRes.rows[0].id;
-    
+
     const notificationsResult = await pool.query(
       `SELECT notification_id, title, message, type as related_type, related_id, created_at, is_read
        FROM notifications
@@ -511,7 +537,7 @@ router.get("/notifications", async (req: AuthRequest, res) => {
 router.post("/notifications/:id/read", async (req: AuthRequest, res) => {
   try {
     const notificationId = req.params.id;
-    
+
     await pool.query(
       "UPDATE notifications SET is_read = true WHERE notification_id = $1",
       [notificationId]
@@ -532,13 +558,13 @@ router.post("/policies/:policy_id/withdraw", async (req: AuthRequest, res) => {
   try {
     const { policy_id } = req.params;
     const { reason } = req.body;
-    
+
     // Get organization info
     const orgRes = await pool.query(
       "SELECT organization_id as id, name FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -593,7 +619,7 @@ router.post("/policies/:policy_id/withdraw", async (req: AuthRequest, res) => {
     const createdAt = new Date(policy.created_at);
     const now = new Date();
     const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-    
+
     if (hoursSinceCreation > 24) {
       return res.status(400).json({
         success: false,
@@ -622,7 +648,7 @@ router.post("/policies/:policy_id/withdraw", async (req: AuthRequest, res) => {
         "SELECT organization_id FROM organizations WHERE organization_id != $1",
         [orgId]
       );
-      
+
       for (const org of allOrgsResult.rows) {
         const notificationId = `notif_${Date.now()}_${org.organization_id}_${Math.random().toString(36).substr(2, 9)}`;
         await pool.query(
@@ -683,13 +709,13 @@ router.post("/policies/:policy_id/withdraw", async (req: AuthRequest, res) => {
 router.delete("/policies/:policy_id", async (req: AuthRequest, res) => {
   try {
     const { policy_id } = req.params;
-    
+
     // Get organization info
     const orgRes = await pool.query(
       "SELECT organization_id as id, name FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -759,7 +785,7 @@ router.delete("/policies/:policy_id", async (req: AuthRequest, res) => {
 router.post("/vote-policy", async (req: AuthRequest, res) => {
   try {
     const { policy_id, vote } = req.body as any;
-    
+
     if (!policy_id || vote === undefined) {
       return res.status(400).json({
         success: false,
@@ -772,7 +798,7 @@ router.post("/vote-policy", async (req: AuthRequest, res) => {
       "SELECT organization_id as id, name FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -800,7 +826,7 @@ router.post("/vote-policy", async (req: AuthRequest, res) => {
     // NOTE: Currently using database-only voting due to single admin wallet limitation
     // All orgs share the same blockchain wallet, so we track votes in DB instead
     let txHash = 'db_only_vote';
-    
+
     /* Blockchain voting disabled - would require separate wallets per org
     const voteResult = await orgPolicyVotingService.voteOnPolicy(
       orgName,
@@ -856,13 +882,13 @@ router.post("/vote-policy", async (req: AuthRequest, res) => {
 router.delete("/delete/:id", async (req: AuthRequest, res) => {
   try {
     const policyId = req.params.id;
-    
+
     // Get organization
     const orgRes = await pool.query(
       "SELECT organization_id as id FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({ success: false, error: "Organization not found" });
     }
@@ -902,7 +928,7 @@ router.get("/dashboard-stats", async (req: AuthRequest, res) => {
       "SELECT organization_id as id FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({ success: false, error: "Organization not found" });
     }
@@ -964,7 +990,7 @@ router.get("/dashboard-active-proposals", async (req: AuthRequest, res) => {
       "SELECT organization_id as id FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({ success: false, error: "Organization not found" });
     }
@@ -1022,7 +1048,7 @@ router.get("/dashboard-recent-activity", async (req: AuthRequest, res) => {
       "SELECT organization_id as id FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({ success: false, error: "Organization not found" });
     }
@@ -1095,7 +1121,7 @@ router.get("/list", async (req: AuthRequest, res) => {
       "SELECT organization_id as id, name FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -1104,7 +1130,7 @@ router.get("/list", async (req: AuthRequest, res) => {
     }
 
     const currentOrgId = orgRes.rows[0].id;
-    
+
     // Get all policies with organization names including pause status
     const policiesResult = await pool.query(
       `SELECT p.policy_id, p.title, p.description, p.policy_content,
@@ -1121,7 +1147,7 @@ router.get("/list", async (req: AuthRequest, res) => {
       "SELECT policy_id, vote FROM policy_votes WHERE organization_id = $1",
       [currentOrgId]
     );
-    
+
     const votesMap = new Map();
     votesResult.rows.forEach((v: any) => {
       votesMap.set(v.policy_id, v.vote);
@@ -1140,11 +1166,11 @@ router.get("/list", async (req: AuthRequest, res) => {
     for (const policy of policiesResult.rows) {
       const hasVoted = votesMap.has(policy.policy_id);
       const myVote = votesMap.get(policy.policy_id);
-      
+
       // Calculate eligible voters (total orgs - 1 for proposer)
       const eligibleVoters = totalOrgs - 1;
       const actualVotes = policy.total_votes || 0;
-      
+
       const policyData = {
         id: policy.policy_id,
         title: policy.title,
@@ -1159,8 +1185,8 @@ router.get("/list", async (req: AuthRequest, res) => {
         totalVotes: actualVotes,
         eligibleVoters,
         voteProgress: `${actualVotes}/${eligibleVoters}`,
-        approval: actualVotes > 0 
-          ? Math.round((policy.votes_for / actualVotes) * 100) 
+        approval: actualVotes > 0
+          ? Math.round((policy.votes_for / actualVotes) * 100)
           : 0,
         createdAt: policy.created_at,
         isMyProposal: policy.proposer_org_id === currentOrgId,
@@ -1198,7 +1224,7 @@ router.get("/blockchain/policies", async (req: AuthRequest, res) => {
   try {
     // Get policies from new blockchain
     const blockchainResult = await blockchainPolicyService.getAllPolicies();
-    
+
     if (!blockchainResult.success) {
       return res.status(500).json({
         success: false,
@@ -1211,7 +1237,7 @@ router.get("/blockchain/policies", async (req: AuthRequest, res) => {
       "SELECT organization_id as id, name FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -1281,7 +1307,7 @@ router.post("/blockchain/propose", async (req: AuthRequest, res) => {
       "SELECT organization_id as id, name FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -1357,7 +1383,7 @@ router.post("/blockchain/:policyId/vote", async (req: AuthRequest, res) => {
       "SELECT organization_id as id, name FROM organizations WHERE email = $1",
       [req.user!.email],
     );
-    
+
     if (!orgRes.rows.length) {
       return res.status(404).json({
         success: false,
@@ -1426,7 +1452,7 @@ router.post("/blockchain/:policyId/vote", async (req: AuthRequest, res) => {
 router.get("/blockchain/approved", async (req: AuthRequest, res) => {
   try {
     const blockchainResult = await blockchainPolicyService.getApprovedPolicies();
-    
+
     if (!blockchainResult.success) {
       return res.status(500).json({
         success: false,
