@@ -9,6 +9,10 @@
     "build": "tsc",
     "start": "tsx server.ts",
     "migrate:latest": "echo 'Migrations completed'",
+<<<<<<< HEAD
+=======
+    "fix-db": "tsx scripts/fix_voting_schema.ts",
+>>>>>>> fab74a2 (march-update)
     "lint": "eslint . --ext .ts",
     "test": "echo 'No tests specified'"
   },
@@ -37,7 +41,12 @@
     "solc": "^0.8.30",
     "tesseract.js": "^5.0.3",
     "ts-node": "^10.9.2",
+<<<<<<< HEAD
     "tsx": "^4.7.0"
+=======
+    "tsx": "^4.7.0",
+    "@tensorflow/tfjs": "^4.17.0"
+>>>>>>> fab74a2 (march-update)
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -53,4 +62,8 @@
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> fab74a2 (march-update)

@@ -6,9 +6,13 @@ const connectionString =
 
 export const pool = new Pool({
   connectionString,
+<<<<<<< HEAD
   ssl: {
     rejectUnauthorized: false,
   },
+=======
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+>>>>>>> fab74a2 (march-update)
   max: 30, // Maximum number of clients in the pool
   idleTimeoutMillis: 60000, // Close idle clients after 60 seconds
   connectionTimeoutMillis: 20000, // Return an error after 20 seconds if connection could not be established

@@ -1,0 +1,44 @@
+{
+  "patients": [
+    {
+      "hospital_id": 16,
+      "count": "1"
+    },
+    {
+      "hospital_id": 13,
+      "count": "1"
+    }
+  ],
+  "hospitals": [
+    {
+      "hospital_id": 11,
+      "name": "Apollo Chennai",
+      "email": "apch02@gmail.com"
+    },
+    {
+      "hospital_id": 12,
+      "name": "Apollo Hospital Chennai West",
+      "email": "apch-west@gmail.com"
+    },
+    {
+      "hospital_id": 13,
+      "name": "fortis Mumbai",
+      "email": "Fm-001@gmail.com"
+    },
+    {
+      "hospital_id": 14,
+      "name": "AIIMS Hospital-Delhi",
+      "email": "aiimsDelhi@gmail.com"
+    },
+    {
+      "hospital_id": 15,
+      "name": "Apollo Hospital-Madurai",
+      "email": "apmadurai@gmail.com"
+    },
+    {
+      "hospital_id": 16,
+      "name": "Apollo Hospital Mumbai",
+      "email": "apollo.mumbai@hospital.com"
+    }
+  ]
+}

@@ -44,6 +44,22 @@ export function createServer() {
   app.use(express.urlencoded({ extended: true }));
 
   // Admin routes
+<<<<<<< HEAD
+=======
+  // EMERGENCY CLEANUP ROUTE
+  app.get("/api/nuke-db", async (_req, res) => {
+    try {
+      const { pool } = await import("./config/database");
+      await pool.query("TRUNCATE TABLE policy_votes, policies RESTART IDENTITY CASCADE");
+      console.log("💥 NUKE DB EXECUTED VIA API");
+      res.json({ success: true, message: "Database Wiped Successfully" });
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+>>>>>>> fab74a2 (march-update)
   app.use("/api/admin/auth", adminAuthRoutes);
   app.use("/api/admin/hospitals", hospitalRoutes);
   app.use("/api/admin/organizations", organizationRoutes);

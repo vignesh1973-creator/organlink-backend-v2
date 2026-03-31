@@ -8,6 +8,10 @@ export interface AuthRequest extends Request {
     id: string;
     email: string;
     type: "admin" | "hospital" | "organization";
+<<<<<<< HEAD
+=======
+    organization_id?: number;
+>>>>>>> fab74a2 (march-update)
   };
   hospital?: {
     hospital_id: string;

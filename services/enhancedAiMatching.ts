@@ -1,4 +1,8 @@
 import { pool } from "../config/database.js";
+<<<<<<< HEAD
+=======
+import { tfModelService } from "./tensorFlowModel.js";
+>>>>>>> fab74a2 (march-update)
 
 interface Patient {
   patient_id: string;
@@ -265,9 +269,15 @@ function calculateDistance(
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
+<<<<<<< HEAD
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
+=======
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
+>>>>>>> fab74a2 (march-update)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -281,7 +291,11 @@ function calculateDistanceScoreByCityState(
   const pCity = (patientLocation.city || '').toLowerCase().trim();
   const pState = (patientLocation.state || '').toLowerCase().trim();
   const pCountry = (patientLocation.country || '').toLowerCase().trim();
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> fab74a2 (march-update)
   const dCity = (donorLocation.city || '').toLowerCase().trim();
   const dState = (donorLocation.state || '').toLowerCase().trim();
   const dCountry = (donorLocation.country || '').toLowerCase().trim();
@@ -404,9 +418,15 @@ export async function findEnhancedMatches(
       organs_available: Array.isArray(row.organs_available)
         ? row.organs_available
         : String(row.organs_available || "")
+<<<<<<< HEAD
             .split(",")
             .map((o: string) => o.trim())
             .filter(Boolean),
+=======
+          .split(",")
+          .map((o: string) => o.trim())
+          .filter(Boolean),
+>>>>>>> fab74a2 (march-update)
       hospital_id: row.hospital_id,
       hospital_name: row.hospital_name,
       city: row.city,
@@ -435,14 +455,22 @@ export async function findEnhancedMatches(
         patient.age,
         patient.organ_needed,
       );
+<<<<<<< HEAD
       
+=======
+
+>>>>>>> fab74a2 (march-update)
       // Use city/state-based distance calculation (not GPS)
       const distanceResult = calculateDistanceScoreByCityState(
         { city: patient.city, state: patient.state, country: patient.country },
         { city: donor.city, state: donor.state, country: donor.country },
       );
       const distanceScore = distanceResult.score;
+<<<<<<< HEAD
       
+=======
+
+>>>>>>> fab74a2 (march-update)
       const timeScore = calculateTimeScore(patient.registration_date);
       const medicalRiskScore = calculateMedicalRiskScore(patient, donor);
 
@@ -461,7 +489,11 @@ export async function findEnhancedMatches(
       if (timeScore > 70) explanation += ` | Extended wait time`;
       if (medicalRiskScore > 85)
         explanation += ` | Excellent medical compatibility`;
+<<<<<<< HEAD
       
+=======
+
+>>>>>>> fab74a2 (march-update)
       // Add detailed distance explanation
       explanation += ` - ${distanceResult.explanation}`;
 
@@ -519,6 +551,7 @@ export async function predictTransplantSuccess(
     const patient = patientResult.rows[0];
     const donor = donorResult.rows[0];
 
+<<<<<<< HEAD
     let successProbability = 75; // Base success rate
     const riskFactors: string[] = [];
     const recommendations: string[] = [];
@@ -594,6 +627,50 @@ export async function predictTransplantSuccess(
 
     // Final success probability
     successProbability = Math.max(30, Math.min(95, successProbability));
+=======
+    const ageDiff = Math.abs(patient.age - donor.age);
+    const bloodCompat = calculateBloodCompatibility(patient.blood_type, donor.blood_type);
+    const organMatch = String(patient.organ_needed).toLowerCase() ===
+      String(donor.organs_available).toLowerCase().includes(String(patient.organ_needed).toLowerCase()); // Simplified check
+
+    // Calculate distance
+    const dist = calculateDistance(
+      patient.hospital_latitude,
+      patient.hospital_longitude,
+      donor.hospital_latitude,
+      donor.hospital_longitude
+    );
+
+    // Map urgency string to number (1-10)
+    let urgencyScore = 1;
+    if (patient.urgency_level === 'Critical') urgencyScore = 10;
+    else if (patient.urgency_level === 'High') urgencyScore = 7;
+    else if (patient.urgency_level === 'Medium') urgencyScore = 4;
+
+    // ---------------------------------------------------------
+    // REAL AI PREDICTION (Using TensorFlow.js)
+    // ---------------------------------------------------------
+    const predictionScore = await tfModelService.predict(
+      ageDiff,
+      bloodCompat > 0, // boolean match
+      dist,
+      urgencyScore,
+      true // Assuming organ matched filter passed earlier
+    );
+
+    let successProbability = Math.round(predictionScore * 100);
+    // ---------------------------------------------------------
+
+    const riskFactors: string[] = [];
+    const recommendations: string[] = [];
+
+    // Add explanations based on the result
+    if (successProbability > 80) {
+      recommendations.push("High AI Confidence Score - Recommended for transplant");
+    }
+
+
+>>>>>>> fab74a2 (march-update)
 
     // Add standard recommendations
     recommendations.push("Complete tissue typing and crossmatching");

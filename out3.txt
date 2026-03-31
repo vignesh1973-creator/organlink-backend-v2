@@ -1,0 +1,94 @@
+{
+  "matching_requests": [
+    {
+      "column_name": "patient_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "ai_score",
+      "data_type": "numeric"
+    },
+    {
+      "column_name": "requesting_hospital_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "match_details",
+      "data_type": "jsonb"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "urgency_level",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "organ_type",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "blood_type",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "request_id",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "status",
+      "data_type": "character varying"
+    }
+  ],
+  "organ_requests": [
+    {
+      "column_name": "id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "donor_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "is_viewed_by_donor_hospital",
+      "data_type": "boolean"
+    },
+    {
+      "column_name": "from_hospital_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "to_hospital_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "patient_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "request_id",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "response_notes",
+      "data_type": "text"
+    },
+    {
+      "column_name": "status",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "notes",
+      "data_type": "text"
+    }
+  ]
+}

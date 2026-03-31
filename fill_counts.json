@@ -1,0 +1,58 @@
+{
+  "hospitals": [
+    {
+      "hospital_id": 11,
+      "name": "Apollo Chennai",
+      "city": "Chennai"
+    },
+    {
+      "hospital_id": 12,
+      "name": "Apollo Hospital Chennai West",
+      "city": "Chennai"
+    },
+    {
+      "hospital_id": 13,
+      "name": "fortis Mumbai",
+      "city": "Mumbai"
+    },
+    {
+      "hospital_id": 14,
+      "name": "AIIMS Hospital-Delhi",
+      "city": "New Delhi"
+    },
+    {
+      "hospital_id": 15,
+      "name": "Apollo Hospital-Madurai",
+      "city": "Madurai"
+    },
+    {
+      "hospital_id": 16,
+      "name": "Apollo Hospital Mumbai",
+      "city": "Mumbai"
+    }
+  ],
+  "patients": [
+    {
+      "hospital_id": 16,
+      "count": "1"
+    },
+    {
+      "hospital_id": 13,
+      "count": "1"
+    }
+  ],
+  "donors": [
+    {
+      "hospital_id": 14,
+      "count": "1"
+    },
+    {
+      "hospital_id": 12,
+      "count": "1"
+    },
+    {
+      "hospital_id": 16,
+      "count": "1"
+    }
+  ]
+}
