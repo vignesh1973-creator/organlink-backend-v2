@@ -48,8 +48,8 @@ Open `D:\Antigravity\OrganLink\backend\.env` and update `DATABASE_URL`:
 # OLD (Online)
 # DATABASE_URL=postgresql://neondb_owner:...
 
-# NEW (Local) - Replace 'your_password' with the one you set during installation
-DATABASE_URL=postgresql://postgres:your_password@localhost:5432/organlink_local
+# NEW (Local)
+DATABASE_URL=postgresql://postgres:4632@localhost:5432/organlink_local
 ```
 
 ## 5. Restart Backend
