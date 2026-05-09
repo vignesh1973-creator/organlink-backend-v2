@@ -102,11 +102,6 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       contact_email,
       guardian_name,
       guardian_phone,
-<<<<<<< HEAD
-      doctor_notes
-    } = req.body;
-
-=======
       doctor_notes,
       govt_id_type,
       govt_id_number
@@ -118,7 +113,6 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
     const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
     const organlink_id = `OL-${year}-${hospSuffix}-${randomSuffix}`;
 
->>>>>>> fab74a2 (march-update)
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -220,17 +214,6 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         console.log('OCR verification result:', ocrResult);
 
         if (!ocrResult.match) {
-<<<<<<< HEAD
-          return res.status(400).json({
-            success: false,
-            error: 'Signature verification failed',
-            details: {
-              extractedName: ocrResult.extractedName,
-              confidence: ocrResult.confidence,
-              strategies: ocrResult.strategies
-            }
-          });
-=======
           // In development, allow bypass if OCR fails to match but no error occurred
           if (process.env.NODE_ENV === 'development') {
             console.warn('⚠️ Signature mismatch detected - allowing registration in development mode');
@@ -253,7 +236,6 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
               }
             });
           }
->>>>>>> fab74a2 (march-update)
         }
         (ocrResult as any).verificationType = 'signature';
       } catch (ocrError) {
@@ -303,11 +285,7 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       const patientHash = blockchainService.generatePatientHash(
         full_name,
         date_of_birth,
-<<<<<<< HEAD
-        national_id,
-=======
         govt_id_number || national_id || organlink_id, // prioritize Govt ID, fallback to OGID
->>>>>>> fab74a2 (march-update)
         blood_type
       );
       blockchainHash = await blockchainService.addVerifiedRecord(
@@ -340,14 +318,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         organ_needed, urgency_level, medical_condition, contact_phone,
         contact_email, guardian_name, guardian_phone,
         signature_ipfs_hash, blockchain_hash, signature_verified, ocr_confidence,
-<<<<<<< HEAD
-        status, status_updated_at, hospital_display_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP, $18)
-=======
         status, status_updated_at, hospital_display_id,
         govt_id_type, govt_id_number, organlink_id
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP, $18, $19, $20, $21)
->>>>>>> fab74a2 (march-update)
       RETURNING *`,
       [
         hospital_id,
@@ -367,14 +340,10 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         ocrResult.match,
         ocrResult.confidence,
         'Waiting',
-<<<<<<< HEAD
-        nextDisplayId
-=======
         nextDisplayId,
         govt_id_type || 'Custom',
         govt_id_number || national_id || `LEGACY-${Date.now()}`,
         organlink_id
->>>>>>> fab74a2 (march-update)
       ],
     );
 

@@ -65,11 +65,7 @@ export class AIMatchingService {
       // Get compatible blood types
       const compatibleBloodTypes =
         this.bloodCompatibility[
-<<<<<<< HEAD
-          criteria.blood_type as keyof typeof this.bloodCompatibility
-=======
         criteria.blood_type as keyof typeof this.bloodCompatibility
->>>>>>> fab74a2 (march-update)
         ] || [];
 
       if (compatibleBloodTypes.length === 0) {
@@ -105,11 +101,7 @@ export class AIMatchingService {
         JOIN hospitals h ON d.hospital_id = h.hospital_id
         WHERE d.blood_type = ANY($1)
           AND d.is_active = true
-<<<<<<< HEAD
-          AND $2 = ANY(d.organs_to_donate)
-=======
           AND d.organs_to_donate::text ILIKE '%' || $2 || '%'
->>>>>>> fab74a2 (march-update)
           AND d.hospital_id != $3
           AND (d.status IS NULL OR d.status = 'Available')
         ORDER BY d.created_at DESC
@@ -121,8 +113,6 @@ export class AIMatchingService {
         criteria.hospital_id,
       ]);
 
-<<<<<<< HEAD
-=======
       // DEFAULT WEIGHTS (if no policy is active)
       let weights = {
         compatibility: 0.4,
@@ -161,7 +151,6 @@ export class AIMatchingService {
         console.error("Policy fetch error:", err);
       }
 
->>>>>>> fab74a2 (march-update)
       // Calculate match scores for each donor
       const matches: DonorMatch[] = donorsResult.rows.map((donor) => {
         const compatibilityScore = this.calculateCompatibilityScore(
@@ -171,11 +160,7 @@ export class AIMatchingService {
 
         const urgencyBonus =
           this.urgencyScores[
-<<<<<<< HEAD
-            criteria.urgency_level as keyof typeof this.urgencyScores
-=======
           criteria.urgency_level as keyof typeof this.urgencyScores
->>>>>>> fab74a2 (march-update)
           ] || 0;
 
         const distanceResult = this.calculateDistanceScore(
@@ -185,20 +170,6 @@ export class AIMatchingService {
 
         const timeScore = this.calculateTimeScore(donor.registration_date);
 
-<<<<<<< HEAD
-        // Overall match score calculation with weights
-        const matchScore =
-          compatibilityScore * 0.4 +
-          urgencyBonus * 0.3 +
-          distanceResult.score * 0.2 +
-          timeScore * 0.1;
-
-        // Build human-readable explanation
-        let explanation = `Blood compatibility: ${compatibilityScore}% | `;
-        explanation += `Distance: ${distanceResult.category} (${distanceResult.score}%) | `;
-        explanation += `Urgency priority: ${urgencyBonus}% | `;
-        explanation += `Availability score: ${timeScore}%`;
-=======
         // Overall match score calculation with DYNAMIC weights
         const matchScore =
           compatibilityScore * weights.compatibility +
@@ -211,7 +182,6 @@ export class AIMatchingService {
         explanation += `Distance: ${distanceResult.category} (${distanceResult.score}% @ ${Math.round(weights.distance*100)}% weight) | `;
         explanation += `Urgency: ${urgencyBonus}% (${Math.round(weights.urgency*100)}% weight) | `;
         explanation += `Time: ${timeScore}% (${Math.round(weights.time*100)}% weight)`;
->>>>>>> fab74a2 (march-update)
 
         return {
           donor_id: donor.donor_id,
@@ -227,14 +197,10 @@ export class AIMatchingService {
           compatibility_score: compatibilityScore,
           urgency_bonus: urgencyBonus,
           registration_time: donor.registration_date,
-<<<<<<< HEAD
-          explanation: distanceResult.explanation,
-=======
           explanation: activePolicy ? `Policy "${activePolicy.title}" Applied: ${distanceResult.explanation}` : distanceResult.explanation,
           policy_applied: !!activePolicy,
           policy_name: activePolicy?.title,
           medical_risk_score: timeScore // Using medical_risk_score as a placeholder for the time/age factor weight display in UI
->>>>>>> fab74a2 (march-update)
         };
       });
 
@@ -249,11 +215,7 @@ export class AIMatchingService {
           "SELECT * FROM patients WHERE patient_id = $1",
           [criteria.patient_id]
         );
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> fab74a2 (march-update)
         if (patientResult.rows.length > 0) {
           const patient = patientResult.rows[0];
           finalMatches = await this.applyBlockchainPolicies(matches, patient);
@@ -295,11 +257,7 @@ export class AIMatchingService {
     // Compatible but not perfect match
     const compatible =
       this.bloodCompatibility[
-<<<<<<< HEAD
-        donorBloodType as keyof typeof this.bloodCompatibility
-=======
       donorBloodType as keyof typeof this.bloodCompatibility
->>>>>>> fab74a2 (march-update)
       ] || [];
     if (compatible.includes(patientBloodType)) {
       return 80;
@@ -319,11 +277,7 @@ export class AIMatchingService {
     const pCity = (patientLocation.city || '').toLowerCase().trim();
     const pState = (patientLocation.state || '').toLowerCase().trim();
     const pCountry = (patientLocation.country || '').toLowerCase().trim();
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> fab74a2 (march-update)
     const dCity = (donorLocation.city || '').toLowerCase().trim();
     const dState = (donorLocation.state || '').toLowerCase().trim();
     const dCountry = (donorLocation.country || '').toLowerCase().trim();
@@ -487,83 +441,6 @@ export class AIMatchingService {
   async applyBlockchainPolicies(matches: any[], patient: any) {
     try {
       // Query approved policies from database
-<<<<<<< HEAD
-      // A policy is considered "approved" if it has > 50% yes votes
-      // Exclude withdrawn and suspended policies
-      const policiesResult = await pool.query(
-        `SELECT p.policy_id, p.title, p.policy_content, p.description,
-                p.votes_for, p.votes_against, p.total_votes
-         FROM policies p
-         WHERE p.status = 'voting' 
-           AND p.total_votes > 0
-           AND (CAST(p.votes_for AS FLOAT) / CAST(p.total_votes AS FLOAT)) > 0.5
-           AND (p.is_withdrawn IS NULL OR p.is_withdrawn = false)
-           AND (p.is_suspended IS NULL OR p.is_suspended = false)
-         ORDER BY p.created_at DESC`
-      );
-
-      const approvedPolicies = policiesResult.rows;
-      console.log(`📋 Found ${approvedPolicies.length} approved policies to apply`);
-
-      // Apply each approved policy
-      for (const policy of approvedPolicies) {
-        const policyTitle = policy.title.toLowerCase();
-        const policyContent = (policy.policy_content || '').toLowerCase();
-        
-        // Kidney Transport Priority Policy
-        if ((policyTitle.includes('kidney') && policyTitle.includes('transport')) ||
-            (policyTitle.includes('kidney') && policyTitle.includes('priority')) ||
-            policyContent.includes('geographically closer')) {
-          
-          if (patient.organ_needed?.toLowerCase() === 'kidney') {
-            console.log(`🏛️ Applying ${policy.title}`);
-            
-            // Get patient hospital details for distance calculation
-            const patientHospitalResult = await pool.query(
-              "SELECT city, state FROM hospitals WHERE hospital_id = $1",
-              [patient.hospital_id]
-            );
-            
-            const patientCity = patientHospitalResult.rows[0]?.city || '';
-            
-            matches.forEach(match => {
-              let distanceBonus = 0;
-              let explanation = '';
-              
-              // Same city gets maximum bonus
-              if (match.city && patientCity && 
-                  match.city.toLowerCase() === patientCity.toLowerCase()) {
-                distanceBonus = 15;
-                explanation = `Same city priority (${match.city}) - ${policy.title} (+${distanceBonus} pts)`;
-              }
-              // Same state gets medium bonus
-              else if (match.state && patientHospitalResult.rows[0]?.state &&
-                      match.state.toLowerCase() === patientHospitalResult.rows[0].state.toLowerCase()) {
-                distanceBonus = 8;
-                explanation = `Same state priority (${match.state}) - ${policy.title} (+${distanceBonus} pts)`;
-              }
-              // Different state/city
-              else {
-                distanceBonus = 0;
-                explanation = `Distance consideration - ${policy.title} (no bonus)`;
-              }
-              
-              if (distanceBonus > 0) {
-                match.match_score = Math.min(100, match.match_score + distanceBonus);
-                match.policy_applied = true;
-                match.policy_name = policy.title;
-                match.blockchain_verified = true;
-              }
-              
-              match.explanation = (match.explanation || '') + (match.explanation ? '; ' : '') + explanation;
-            });
-          }
-        }
-        
-        // Apply pediatric priority policies
-        if (policyTitle.includes('pediatric') && patient.age < 18) {
-          console.log(`👶 Applying ${policy.title} for pediatric patient`);
-=======
       const policiesResult = await pool.query(
         `SELECT p.policy_id, p.title, p.policy_content, p.description, p.organ_type
          FROM policies p
@@ -582,32 +459,10 @@ export class AIMatchingService {
 
         // Pediatric priority (if not already handled by weights)
         if (policyTitle.includes('pediatric') && patient.age < 18) {
->>>>>>> fab74a2 (march-update)
           matches.forEach(match => {
             match.match_score = Math.min(100, match.match_score + 5);
             match.policy_applied = true;
             match.policy_name = policy.title;
-<<<<<<< HEAD
-            match.explanation = (match.explanation || '') + `; ${policy.title} (+5 pts)`;
-          });
-        }
-        
-        // Apply urgent case priority policies
-        if (policyTitle.includes('urgent') || policyTitle.includes('emergency') || policyTitle.includes('critical')) {
-          if (patient.urgency_level === 'Critical') {
-            console.log(`⚠️ Applying ${policy.title} for critical patient`);
-            matches.forEach(match => {
-              match.match_score = Math.min(100, match.match_score + 8);
-              match.policy_applied = true;
-              match.policy_name = policy.title;
-              match.explanation = (match.explanation || '') + `; ${policy.title} (+8 pts)`;
-            });
-          }
-        }
-      }
-
-      // Final re-sort after all policies applied
-=======
             match.explanation = (match.explanation || '') + `; ${policy.title} (+5 pediatric bonus)`;
           });
         }
@@ -624,17 +479,12 @@ export class AIMatchingService {
       }
 
       // Final re-sort if any bonuses were added
->>>>>>> fab74a2 (march-update)
       matches.sort((a, b) => b.match_score - a.match_score);
 
       return matches;
     } catch (error) {
       console.error('Error applying blockchain policies:', error);
-<<<<<<< HEAD
-      return matches; // Return original matches if policy application fails
-=======
       return matches;
->>>>>>> fab74a2 (march-update)
     }
   }
 }

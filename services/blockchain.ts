@@ -492,33 +492,6 @@ export class BlockchainService {
     } catch (error) {
       console.error('Blockchain error:', error);
 
-<<<<<<< HEAD
-      // For development, return a mock hash if blockchain fails
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Using mock blockchain hash for development');
-        const mockHash = `0x${Date.now().toString(16).padEnd(64, '0')}`;
-
-        // Log mock event
-        try {
-          await pool.query(
-            `INSERT INTO blockchain_events (event_type, transaction_hash, block_number, gas_used, gas_fee, status)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [
-              'RecordAdded (Mock)',
-              mockHash,
-              123456,
-              21000,
-              0.001,
-              'confirmed'
-            ]
-          );
-        } catch (e) { }
-
-        return mockHash;
-      }
-
-      throw new Error(`Failed to add record to blockchain: ${error}`);
-=======
       // FALLBACK: If blockchain fails (no gas, wrong network, unauthorized), 
       // return a mock hash so the application flow continues for the demo.
       console.warn('⚠️ Blockchain transaction failed (falling back to DEMO mode):', error.message);
@@ -544,7 +517,6 @@ export class BlockchainService {
       }
 
       return mockHash;
->>>>>>> fab74a2 (march-update)
     }
   }
 
@@ -573,8 +545,6 @@ export class BlockchainService {
     }
   }
 
-<<<<<<< HEAD
-=======
   // Find a record by Patient Name/ID (re-creating the hash to search)
   // In a production system, we would have a mapping(bytes32 => uint256) in Solidity.
   // For this prototype, we iterate to find it.
@@ -646,7 +616,6 @@ export class BlockchainService {
     }
   }
 
->>>>>>> fab74a2 (march-update)
   // Get total record count
   async getRegistryRecordCount(): Promise<number> {
     try {

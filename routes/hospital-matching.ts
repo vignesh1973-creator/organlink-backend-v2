@@ -1,10 +1,6 @@
 import express from "express";
 import { pool } from "../config/database.js";
-<<<<<<< HEAD
-import { authenticateHospital } from "../middleware/auth.js";
-=======
 import { authenticateHospital, AuthRequest } from "../middleware/auth.js";
->>>>>>> fab74a2 (march-update)
 import { aiMatchingService } from "../services/aiMatching.js";
 import {
   findEnhancedMatches,
@@ -16,11 +12,7 @@ import { ipfsService } from "../services/ipfs.js";
 const router = express.Router();
 
 // Find matches for a patient
-<<<<<<< HEAD
-router.post("/find-matches", authenticateHospital, async (req, res) => {
-=======
 router.post("/find-matches", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { patient_id, organ_type, blood_type, urgency_level } = req.body;
@@ -68,11 +60,7 @@ router.post("/find-matches", authenticateHospital, async (req: AuthRequest, res)
 });
 
 // Create a matching request
-<<<<<<< HEAD
-router.post("/create-request", authenticateHospital, async (req, res) => {
-=======
 router.post("/create-request", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { patient_id, organ_type, blood_type, urgency_level } = req.body;
@@ -120,11 +108,7 @@ router.post("/create-request", authenticateHospital, async (req: AuthRequest, re
 });
 
 // Get all matching requests for the hospital
-<<<<<<< HEAD
-router.get("/requests", authenticateHospital, async (req, res) => {
-=======
 router.get("/requests", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
 
@@ -144,11 +128,7 @@ router.get("/requests", authenticateHospital, async (req: AuthRequest, res) => {
 });
 
 // Get outgoing requests (sent by this hospital to other hospitals)
-<<<<<<< HEAD
-router.get("/outgoing-requests", authenticateHospital, async (req, res) => {
-=======
 router.get("/outgoing-requests", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
 
@@ -184,11 +164,7 @@ router.get("/outgoing-requests", authenticateHospital, async (req: AuthRequest, 
 
 // Get requests received by this hospital (as donor hospital) with response history
 // Only show requests that have been DECIDED (accepted or rejected), not pending
-<<<<<<< HEAD
-router.get("/received-requests", authenticateHospital, async (req, res) => {
-=======
 router.get("/received-requests", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
 
@@ -202,15 +178,9 @@ router.get("/received-requests", authenticateHospital, async (req: AuthRequest, 
               or_req.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata' as created_at_ist,
               or_req.updated_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata' as updated_at_ist
        FROM organ_requests or_req
-<<<<<<< HEAD
-       INNER JOIN patients p ON or_req.patient_id = p.patient_id
-       LEFT JOIN donors d ON or_req.donor_id = d.donor_id
-       LEFT JOIN hospitals h_from ON or_req.from_hospital_id = h_from.hospital_id
-=======
        LEFT JOIN patients p ON or_req.patient_id::text = p.patient_id::text
        LEFT JOIN donors d ON or_req.donor_id::text = d.donor_id::text
        LEFT JOIN hospitals h_from ON or_req.from_hospital_id::text = h_from.hospital_id::text
->>>>>>> fab74a2 (march-update)
        WHERE or_req.to_hospital_id = $1
          AND or_req.status IN ('accepted', 'rejected')
        ORDER BY or_req.updated_at DESC`,
@@ -232,11 +202,7 @@ router.get("/received-requests", authenticateHospital, async (req: AuthRequest, 
 
 // Get potential donors for incoming match requests (when other hospitals need organs)
 // Only show PENDING requests (not yet accepted/rejected)
-<<<<<<< HEAD
-router.get("/incoming-matches", authenticateHospital, async (req, res) => {
-=======
 router.get("/incoming-matches", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
 
@@ -289,11 +255,7 @@ router.get("/incoming-matches", authenticateHospital, async (req: AuthRequest, r
 });
 
 // Respond to a matching request (accept/reject)
-<<<<<<< HEAD
-router.post("/respond", authenticateHospital, async (req, res) => {
-=======
 router.post("/respond", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { request_id, donor_id, response, notes } = req.body;
@@ -335,11 +297,7 @@ router.post("/respond", authenticateHospital, async (req: AuthRequest, res) => {
     // Create notification for requesting hospital
     const notificationId = `NOTIF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const title = response === "accept" ? "Request Accepted!" : "Request Declined";
-<<<<<<< HEAD
-    const message = response === "accept" 
-=======
     const message = response === "accept"
->>>>>>> fab74a2 (march-update)
       ? `Your organ request for ${request.patient_name} has been accepted. Please coordinate next steps.`
       : `Your organ request for ${request.patient_name} has been declined.${notes ? ' Reason: ' + notes : ''}`;
 
@@ -385,11 +343,7 @@ router.post("/respond", authenticateHospital, async (req: AuthRequest, res) => {
 });
 
 // Send organ request to donor hospital
-<<<<<<< HEAD
-router.post("/send-request", authenticateHospital, async (req, res) => {
-=======
 router.post("/send-request", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const fromHospitalId = req.hospital?.hospital_id;
     const { donor_id, donor_hospital_id, patient_id, notes } = req.body;
@@ -403,11 +357,7 @@ router.post("/send-request", authenticateHospital, async (req: AuthRequest, res)
 
     // Verify patient belongs to requesting hospital
     const patientResult = await pool.query(
-<<<<<<< HEAD
-      "SELECT full_name, organ_needed, urgency_level FROM patients WHERE patient_id = $1 AND hospital_id = $2",
-=======
       "SELECT full_name, organ_needed, urgency_level, contact_phone, contact_email, patient_id FROM patients WHERE patient_id = $1 AND hospital_id = $2",
->>>>>>> fab74a2 (march-update)
       [patient_id, fromHospitalId]
     );
 
@@ -431,11 +381,7 @@ router.post("/send-request", authenticateHospital, async (req: AuthRequest, res)
 
     // Determine initial status: auto-accept if same hospital, pending otherwise
     const initialStatus = isSameHospital ? "accepted" : "pending";
-<<<<<<< HEAD
-    const autoAcceptNotes = isSameHospital 
-=======
     const autoAcceptNotes = isSameHospital
->>>>>>> fab74a2 (march-update)
       ? "Auto-accepted: Internal hospital match - donor and patient in same facility"
       : notes || null;
 
@@ -446,21 +392,12 @@ router.post("/send-request", authenticateHospital, async (req: AuthRequest, res)
         donor_id, status, notes, response_notes, created_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`,
       [
-<<<<<<< HEAD
-        requestId, 
-        fromHospitalId, 
-        donor_hospital_id, 
-        patient_id, 
-        donor_id, 
-        initialStatus, 
-=======
         requestId,
         fromHospitalId,
         donor_hospital_id,
         patient_id,
         donor_id,
         initialStatus,
->>>>>>> fab74a2 (march-update)
         notes || null,
         isSameHospital ? autoAcceptNotes : null
       ]
@@ -478,23 +415,6 @@ router.post("/send-request", authenticateHospital, async (req: AuthRequest, res)
       [patientStatus, donor_id, donor_hospital_id, patient_id]
     );
 
-<<<<<<< HEAD
-    // If same hospital, also update donor status to Matched
-    if (isSameHospital) {
-      await pool.query(
-        `UPDATE donors 
-         SET status = 'Matched',
-             status_updated_at = CURRENT_TIMESTAMP,
-             matched_patient_id = $1
-         WHERE donor_id = $2`,
-        [patient_id, donor_id]
-      );
-    }
-
-    // Create notification - different message for same hospital
-    const notificationId = `NOTIF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-=======
     // Update donor status
     const donorStatus = isSameHospital ? 'Matched' : 'In Progress';
     await pool.query(
@@ -509,7 +429,6 @@ router.post("/send-request", authenticateHospital, async (req: AuthRequest, res)
     // Create notification - different message for same hospital
     const notificationId = `NOTIF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
->>>>>>> fab74a2 (march-update)
     if (isSameHospital) {
       // Internal match notification
       await pool.query(
@@ -563,8 +482,6 @@ router.post("/send-request", authenticateHospital, async (req: AuthRequest, res)
       );
     }
 
-<<<<<<< HEAD
-=======
     // ANONYMOUS NOTIFICATION: Notify Patient that a match was found
     try {
       if (patient.contact_phone || patient.contact_email) {
@@ -595,7 +512,6 @@ router.post("/send-request", authenticateHospital, async (req: AuthRequest, res)
       console.error('Failed to log anonymous notification:', notifError);
     }
 
->>>>>>> fab74a2 (march-update)
     // Return appropriate message based on match type
     const successMessage = isSameHospital
       ? `✅ Internal match confirmed! Patient and donor are both in your facility. Patient and donor statuses updated to 'Matched'. Please coordinate internally.`
@@ -613,22 +529,14 @@ router.post("/send-request", authenticateHospital, async (req: AuthRequest, res)
     console.error("Send request error:", error);
     res.status(500).json({
       success: false,
-<<<<<<< HEAD
-      error: "Failed to send request",
-=======
       error: error instanceof Error ? error.message : "Failed to send request",
       stack: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.stack : undefined : undefined
->>>>>>> fab74a2 (march-update)
     });
   }
 });
 
 // Accept or reject organ request
-<<<<<<< HEAD
-router.post("/requests/:request_id/respond", authenticateHospital, async (req, res) => {
-=======
 router.post("/requests/:request_id/respond", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospitalId = req.hospital?.hospital_id;
     const { request_id } = req.params;
@@ -665,11 +573,7 @@ router.post("/requests/:request_id/respond", authenticateHospital, async (req: A
 
     // Check if patient still exists
     const patientCheck = await pool.query(
-<<<<<<< HEAD
-      `SELECT patient_id, full_name FROM patients WHERE patient_id = $1`,
-=======
       `SELECT patient_id, full_name, contact_phone, contact_email, organ_needed FROM patients WHERE patient_id = $1`,
->>>>>>> fab74a2 (march-update)
       [basicRequest.patient_id]
     );
 
@@ -743,14 +647,6 @@ router.post("/requests/:request_id/respond", authenticateHospital, async (req: A
       await pool.query(
         `UPDATE patients 
          SET status = 'Waiting', 
-<<<<<<< HEAD
-             status_updated_at = CURRENT_TIMESTAMP,
-             matched_donor_id = NULL,
-             matched_hospital_id = NULL
-         WHERE patient_id = $1`,
-        [request.patient_id]
-      );
-=======
          status_updated_at = CURRENT_TIMESTAMP,
          matched_donor_id = NULL,
          matched_hospital_id = NULL
@@ -767,17 +663,12 @@ router.post("/requests/:request_id/respond", authenticateHospital, async (req: A
          WHERE donor_id = $1`,
         [request.donor_id]
       );
->>>>>>> fab74a2 (march-update)
     }
 
     // Create notification for requesting hospital
     const notificationId = `NOTIF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const title = status === "accepted" ? "Request Accepted!" : "Request Declined";
-<<<<<<< HEAD
-    const message = status === "accepted" 
-=======
     const message = status === "accepted"
->>>>>>> fab74a2 (march-update)
       ? `Your organ request for ${request.patient_name} has been accepted. Please coordinate next steps.`
       : `Your organ request for ${request.patient_name} has been declined.${response_notes ? ' Reason: ' + response_notes : ''}`;
 
@@ -803,8 +694,6 @@ router.post("/requests/:request_id/respond", authenticateHospital, async (req: A
       ]
     );
 
-<<<<<<< HEAD
-=======
     // ANONYMOUS NOTIFICATION: Notify Patient of Outcome
     try {
       const p = patientCheck.rows[0]; // We fetched this earlier
@@ -829,7 +718,6 @@ router.post("/requests/:request_id/respond", authenticateHospital, async (req: A
       }
     } catch (e) { console.error('Notification log error:', e); }
 
->>>>>>> fab74a2 (march-update)
     // Mark the original notification as read
     await pool.query(
       "UPDATE notifications SET is_read = true WHERE related_id = $1 AND hospital_id = $2",
@@ -851,17 +739,11 @@ router.post("/requests/:request_id/respond", authenticateHospital, async (req: A
 });
 
 // Mark transplant as completed
-<<<<<<< HEAD
-router.post("/complete-transplant", authenticateHospital, async (req, res) => {
-=======
 router.post("/complete-transplant", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { patient_id, donor_id, notes } = req.body;
 
-<<<<<<< HEAD
-=======
     // Check if an active request already exists for this pair to prevent duplicates
     const existingRequest = await pool.query(
       "SELECT request_id FROM organ_requests WHERE patient_id = $1 AND donor_id = $2 AND status != 'rejected'",
@@ -875,7 +757,6 @@ router.post("/complete-transplant", authenticateHospital, async (req: AuthReques
       });
     }
 
->>>>>>> fab74a2 (march-update)
     if (!patient_id || !donor_id) {
       return res.status(400).json({
         success: false,
@@ -907,17 +788,10 @@ router.post("/complete-transplant", authenticateHospital, async (req: AuthReques
       [patient_id]
     );
 
-<<<<<<< HEAD
-    // Update donor status to 'Donated'
-    await pool.query(
-      `UPDATE donors 
-       SET status = 'Donated', 
-=======
     // Update donor status to 'Completed'
     await pool.query(
       `UPDATE donors 
        SET status = 'Completed', 
->>>>>>> fab74a2 (march-update)
            status_updated_at = CURRENT_TIMESTAMP,
            donated_at = CURRENT_TIMESTAMP
        WHERE donor_id = $1`,
@@ -948,11 +822,7 @@ router.post("/complete-transplant", authenticateHospital, async (req: AuthReques
 });
 
 // Get match statistics
-<<<<<<< HEAD
-router.get("/stats", authenticateHospital, async (req, res) => {
-=======
 router.get("/stats", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
 
@@ -990,11 +860,7 @@ router.get("/stats", authenticateHospital, async (req: AuthRequest, res) => {
 });
 
 // Mark received requests as viewed (when Received tab is opened)
-<<<<<<< HEAD
-router.post("/mark-received-viewed", authenticateHospital, async (req, res) => {
-=======
 router.post("/mark-received-viewed", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
 
@@ -1022,11 +888,7 @@ router.post("/mark-received-viewed", authenticateHospital, async (req: AuthReque
 });
 
 // Enhanced AI matching endpoint
-<<<<<<< HEAD
-router.post("/enhanced-matches", authenticateHospital, async (req, res) => {
-=======
 router.post("/enhanced-matches", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { patient_id } = req.body;
@@ -1066,15 +928,9 @@ router.post("/enhanced-matches", authenticateHospital, async (req: AuthRequest, 
     try {
       // Query active policies from database (excluding paused ones)
       const polRes = await pool.query(
-<<<<<<< HEAD
-        `SELECT policy_id, title, description, policy_content, created_at
-         FROM policies
-         WHERE status = 'active' AND (paused_for_matching = FALSE OR paused_for_matching IS NULL)
-=======
         `SELECT policy_id, title, description, policy_content, created_at, organ_type
          FROM policies
          WHERE LOWER(status) = 'active' AND (is_suspended = FALSE OR is_suspended IS NULL)
->>>>>>> fab74a2 (march-update)
          ORDER BY created_at DESC`,
       );
 
@@ -1083,20 +939,6 @@ router.post("/enhanced-matches", authenticateHospital, async (req: AuthRequest, 
 
       for (const row of polRes.rows) {
         let organMatch = false;
-<<<<<<< HEAD
-        
-        // Extract organ type from title, description, or content
-        // Policy titles usually contain organ name like "Kidney Allocation" or "Heart Transport"
-        const textToSearch = (
-          (row.title || '') + ' ' + 
-          (row.description || '') + ' ' + 
-          (row.policy_content || '')
-        ).toLowerCase();
-        
-        // Check if patient's organ type is mentioned in the policy
-        // Common organ types: kidney, heart, liver, lung, pancreas, intestine
-        if (patientOrgan && textToSearch.includes(patientOrgan)) {
-=======
 
         // Extract organ type from title, description, or content
         // Policy titles usually contain organ name like "Kidney Allocation" or "Heart Transport"
@@ -1109,7 +951,6 @@ router.post("/enhanced-matches", authenticateHospital, async (req: AuthRequest, 
         // Check if patient's organ type matches explicitly or is mentioned in the text
         const policyOrgan = row.organ_type ? String(row.organ_type).toLowerCase().trim() : null;
         if (policyOrgan === patientOrgan || (patientOrgan && textToSearch.includes(patientOrgan))) {
->>>>>>> fab74a2 (march-update)
           organMatch = true;
         }
 
@@ -1119,15 +960,9 @@ router.post("/enhanced-matches", authenticateHospital, async (req: AuthRequest, 
             // Apply first matching policy
             policyApplied = true;
             policyTitle = row.title;
-<<<<<<< HEAD
-            
-            console.log(`Applying policy: ${row.title} for organ: ${patientOrgan}`);
-            
-=======
 
             console.log(`Applying policy: ${row.title} for organ: ${patientOrgan}`);
 
->>>>>>> fab74a2 (march-update)
             // Parse criteria weights if available
             let weights = {
               blood: 0.4,
@@ -1135,24 +970,6 @@ router.post("/enhanced-matches", authenticateHospital, async (req: AuthRequest, 
               distance: 0.2,
               time: 0.1,
             };
-<<<<<<< HEAD
-            
-            if (row.criteria_weights) {
-              try {
-                const parsed = typeof row.criteria_weights === 'string' 
-                  ? JSON.parse(row.criteria_weights)
-                  : row.criteria_weights;
-                  
-                weights = {
-                  blood: Number(parsed.blood_compatibility || parsed.blood || 0.4),
-                  urgency: Number(parsed.urgency_level || parsed.urgency || 0.3),
-                  distance: Number(parsed.geographical_distance || parsed.distance || 0.2),
-                  time: Number(parsed.waiting_time || parsed.time || 0.1),
-                };
-              } catch (e) {
-                console.log('Using default weights due to parse error:', e);
-              }
-=======
 
             const content = typeof row.policy_content === 'string'
               ? JSON.parse(row.policy_content)
@@ -1166,7 +983,6 @@ router.post("/enhanced-matches", authenticateHospital, async (req: AuthRequest, 
                 time: Number(content.age_weight || content.waiting_time || 0.1),
               };
               console.log('⚖️ Applied Dynamic Weights:', weights);
->>>>>>> fab74a2 (march-update)
             }
 
             // Recompute scores using policy weights
@@ -1174,40 +990,24 @@ router.post("/enhanced-matches", authenticateHospital, async (req: AuthRequest, 
               .map((m) => {
                 const recomputed = Math.round(
                   m.compatibility_score * weights.blood +
-<<<<<<< HEAD
-                    m.urgency_bonus * weights.urgency +
-                    m.distance_score * weights.distance +
-                    (m.time_score || 100) * weights.time
-                );
-                
-=======
                   m.urgency_bonus * weights.urgency +
                   m.distance_score * weights.distance +
                   (m.time_score || 100) * weights.time
                 );
 
->>>>>>> fab74a2 (march-update)
                 let explanation = m.explanation || "";
                 const policyNote = `Policy: ${policyTitle}${policyCount > 1 ? ` (+${policyCount - 1} more)` : ""}`;
                 explanation = explanation
                   ? `${explanation}; ${policyNote}`
                   : policyNote;
-<<<<<<< HEAD
-                  
-=======
 
->>>>>>> fab74a2 (march-update)
                 return { ...m, match_score: recomputed, explanation };
               })
               .sort((a, b) => b.match_score - a.match_score);
           }
         }
       }
-<<<<<<< HEAD
-      
-=======
 
->>>>>>> fab74a2 (march-update)
       if (policyCount > 0) {
         console.log(`Applied ${policyCount} active ${patientOrgan} policy/policies`);
       }
@@ -1233,11 +1033,7 @@ router.post("/enhanced-matches", authenticateHospital, async (req: AuthRequest, 
 });
 
 // Predict transplant success
-<<<<<<< HEAD
-router.post("/predict-success", authenticateHospital, async (req, res) => {
-=======
 router.post("/predict-success", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const { patient_id, donor_id } = req.body;
 
@@ -1264,11 +1060,7 @@ router.post("/predict-success", authenticateHospital, async (req: AuthRequest, r
 });
 
 // Get matching insights for hospital
-<<<<<<< HEAD
-router.get("/insights", authenticateHospital, async (req, res) => {
-=======
 router.get("/insights", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
 

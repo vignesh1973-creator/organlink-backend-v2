@@ -135,16 +135,6 @@ router.post("/", async (req: AuthRequest, res: Response) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-<<<<<<< HEAD
-    const result = await pool.query(
-      `
-      INSERT INTO hospitals (
-        name, country, state, city, email, phone, address, password_hash
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING hospital_id as id, hospital_id, name, country, state, city, email, phone, address, is_active, created_at
-    `,
-      [
-=======
     // Generate auto-incrementing-like ID
     const hospital_id = `HOSP${Date.now().toString().slice(-8)}`;
 
@@ -157,7 +147,6 @@ router.post("/", async (req: AuthRequest, res: Response) => {
     `,
       [
         hospital_id,
->>>>>>> fab74a2 (march-update)
         name,
         country,
         state,

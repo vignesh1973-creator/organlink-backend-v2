@@ -1,8 +1,5 @@
 import { pool } from "../config/database.js";
-<<<<<<< HEAD
-=======
 import { tfModelService } from "./tensorFlowModel.js";
->>>>>>> fab74a2 (march-update)
 
 interface Patient {
   patient_id: string;
@@ -269,15 +266,9 @@ function calculateDistance(
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
-<<<<<<< HEAD
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-=======
     Math.cos((lat2 * Math.PI) / 180) *
     Math.sin(dLon / 2) *
     Math.sin(dLon / 2);
->>>>>>> fab74a2 (march-update)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -291,11 +282,7 @@ function calculateDistanceScoreByCityState(
   const pCity = (patientLocation.city || '').toLowerCase().trim();
   const pState = (patientLocation.state || '').toLowerCase().trim();
   const pCountry = (patientLocation.country || '').toLowerCase().trim();
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> fab74a2 (march-update)
   const dCity = (donorLocation.city || '').toLowerCase().trim();
   const dState = (donorLocation.state || '').toLowerCase().trim();
   const dCountry = (donorLocation.country || '').toLowerCase().trim();
@@ -418,15 +405,9 @@ export async function findEnhancedMatches(
       organs_available: Array.isArray(row.organs_available)
         ? row.organs_available
         : String(row.organs_available || "")
-<<<<<<< HEAD
-            .split(",")
-            .map((o: string) => o.trim())
-            .filter(Boolean),
-=======
           .split(",")
           .map((o: string) => o.trim())
           .filter(Boolean),
->>>>>>> fab74a2 (march-update)
       hospital_id: row.hospital_id,
       hospital_name: row.hospital_name,
       city: row.city,
@@ -455,22 +436,14 @@ export async function findEnhancedMatches(
         patient.age,
         patient.organ_needed,
       );
-<<<<<<< HEAD
-      
-=======
 
->>>>>>> fab74a2 (march-update)
       // Use city/state-based distance calculation (not GPS)
       const distanceResult = calculateDistanceScoreByCityState(
         { city: patient.city, state: patient.state, country: patient.country },
         { city: donor.city, state: donor.state, country: donor.country },
       );
       const distanceScore = distanceResult.score;
-<<<<<<< HEAD
-      
-=======
 
->>>>>>> fab74a2 (march-update)
       const timeScore = calculateTimeScore(patient.registration_date);
       const medicalRiskScore = calculateMedicalRiskScore(patient, donor);
 
@@ -489,11 +462,7 @@ export async function findEnhancedMatches(
       if (timeScore > 70) explanation += ` | Extended wait time`;
       if (medicalRiskScore > 85)
         explanation += ` | Excellent medical compatibility`;
-<<<<<<< HEAD
-      
-=======
 
->>>>>>> fab74a2 (march-update)
       // Add detailed distance explanation
       explanation += ` - ${distanceResult.explanation}`;
 
@@ -551,83 +520,6 @@ export async function predictTransplantSuccess(
     const patient = patientResult.rows[0];
     const donor = donorResult.rows[0];
 
-<<<<<<< HEAD
-    let successProbability = 75; // Base success rate
-    const riskFactors: string[] = [];
-    const recommendations: string[] = [];
-
-    // Age-based success prediction (from dataset analysis)
-    const ageDiff = Math.abs(patient.age - donor.age);
-    if (ageDiff > 20) {
-      successProbability -= 15;
-      riskFactors.push(
-        "Significant age difference between donor and recipient",
-      );
-      recommendations.push("Consider additional pre-operative screening");
-    } else if (ageDiff <= 5) {
-      successProbability += 10;
-    }
-
-    // Blood type compatibility impact
-    const bloodCompat = calculateBloodCompatibility(
-      patient.blood_type,
-      donor.blood_type,
-    );
-    if (bloodCompat < 80) {
-      successProbability -= 20;
-      riskFactors.push("Suboptimal blood type compatibility");
-      recommendations.push(
-        "Enhanced immunosuppression protocol may be required",
-      );
-    } else if (bloodCompat === 100) {
-      successProbability += 15;
-    }
-
-    // Organ-specific success rates (based on medical literature)
-    switch (patient.organ_needed.toLowerCase()) {
-      case "kidney":
-        successProbability += 10; // Kidneys have high success rates
-        break;
-      case "heart":
-        if (patient.age > 65) {
-          successProbability -= 10;
-          riskFactors.push("Advanced age for heart transplant");
-        }
-        break;
-      case "liver":
-        if (patient.urgency_level === "Critical") {
-          successProbability -= 5;
-          riskFactors.push("Critical condition may affect recovery");
-        }
-        break;
-      case "lung":
-      case "lungs":
-        successProbability -= 5; // Lung transplants are generally more complex
-        if (ageDiff > 10) {
-          successProbability -= 10;
-          riskFactors.push("Age compatibility critical for lung transplants");
-        }
-        break;
-    }
-
-    // Urgency level impact
-    if (patient.urgency_level === "Critical") {
-      successProbability -= 5;
-      riskFactors.push("Critical condition increases surgical risk");
-      recommendations.push("Expedited surgical planning and ICU preparation");
-    }
-
-    // Gender matching (some organs benefit from gender matching)
-    if (
-      patient.gender === donor.gender &&
-      ["Heart", "Liver"].includes(patient.organ_needed)
-    ) {
-      successProbability += 5;
-    }
-
-    // Final success probability
-    successProbability = Math.max(30, Math.min(95, successProbability));
-=======
     const ageDiff = Math.abs(patient.age - donor.age);
     const bloodCompat = calculateBloodCompatibility(patient.blood_type, donor.blood_type);
     const organMatch = String(patient.organ_needed).toLowerCase() ===
@@ -670,7 +562,6 @@ export async function predictTransplantSuccess(
     }
 
 
->>>>>>> fab74a2 (march-update)
 
     // Add standard recommendations
     recommendations.push("Complete tissue typing and crossmatching");

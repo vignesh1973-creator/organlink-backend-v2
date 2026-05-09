@@ -24,8 +24,6 @@ const upload = multer({
   },
 });
 
-<<<<<<< HEAD
-=======
 // Global lookup across blockchain/national registry
 router.post("/global-lookup", authenticateHospital, async (req: AuthRequest, res) => {
   try {
@@ -120,7 +118,6 @@ router.post("/global-lookup", authenticateHospital, async (req: AuthRequest, res
     res.status(500).json({ success: false, error: "Failed to perform global lookup" });
   }
 });
->>>>>>> fab74a2 (march-update)
 // Get all donors for a hospital
 router.get("/", authenticateHospital, async (req: AuthRequest, res) => {
   try {
@@ -131,11 +128,7 @@ router.get("/", authenticateHospital, async (req: AuthRequest, res) => {
          created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata' as created_at_ist,
          registration_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata' as registration_date_ist
        FROM donors 
-<<<<<<< HEAD
-       WHERE hospital_id = $1 
-=======
        WHERE hospital_id = $1 AND status != 'Transferred'
->>>>>>> fab74a2 (march-update)
        ORDER BY created_at DESC`,
       [hospital_id],
     );
@@ -184,20 +177,13 @@ router.get("/:donor_id", authenticateHospital, async (req: AuthRequest, res) => 
   }
 });
 
-<<<<<<< HEAD
-// Register new donor
-=======
 // Register new donor or Import from National Registry
->>>>>>> fab74a2 (march-update)
 router.post("/register", upload.single('signature'), authenticateHospital, async (req: AuthRequest, res) => {
   try {
     const hospital_id = req.hospital?.hospital_id;
     const hospital_name = req.hospital?.hospital_name || 'Unknown Hospital';
-<<<<<<< HEAD
-=======
     
     // 1. Core Data Extraction
->>>>>>> fab74a2 (march-update)
     const {
       full_name,
       age,
@@ -208,148 +194,6 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       contact_phone,
       contact_email,
       guardian_name,
-<<<<<<< HEAD
-      guardian_phone
-    } = req.body;
-
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        error: 'Signature image is required'
-      });
-    }
-
-    console.log('Processing donor registration for:', full_name);
-
-    // Parse organs_to_donate if it's a JSON string
-    let parsedOrgans;
-    try {
-      parsedOrgans = typeof organs_to_donate === 'string' ? JSON.parse(organs_to_donate) : organs_to_donate;
-    } catch (parseError) {
-      console.error('Error parsing organs_to_donate:', parseError);
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid organs_to_donate format'
-      });
-    }
-    console.log('Parsed organs:', parsedOrgans);
-
-    // Determine verification mode: Aadhaar or Signature
-    const verificationType = req.body.verification_type || 'signature'; // 'aadhaar' or 'signature'
-    const aadhaarLast4 = req.body.aadhaar_last4; // Last 4 digits provided by user
-    let ocrResult;
-    let extractedPhoto = null;
-    let aadhaarData = null;
-
-    if (verificationType === 'aadhaar') {
-      // Validate last 4 digits provided
-      if (!aadhaarLast4 || aadhaarLast4.length !== 4) {
-        return res.status(400).json({
-          success: false,
-          error: 'Please provide the last 4 digits of your Aadhaar number'
-        });
-      }
-      // Step 1A: Aadhaar-based verification
-      console.log('Starting Aadhaar verification...');
-      try {
-        const aadhaarResult = await aadhaarOCRService.extractAadhaarData(req.file.buffer);
-
-        if (!aadhaarResult.success || !aadhaarResult.data) {
-          return res.status(400).json({
-            success: false,
-            error: aadhaarResult.error || 'Could not extract data from Aadhaar card',
-            details: {
-              rawText: aadhaarResult.rawText,
-              confidence: aadhaarResult.confidence
-            }
-          });
-        }
-
-        aadhaarData = aadhaarResult.data;
-        console.log('Extracted Aadhaar data:', aadhaarData);
-
-        // Verify last 4 digits match
-        const extractedLast4 = aadhaarData.aadhaarNumber.slice(-4);
-        console.log(`Verifying Aadhaar: Provided last 4: ${aadhaarLast4}, Extracted last 4: ${extractedLast4}`);
-
-        if (extractedLast4 !== aadhaarLast4) {
-          // In development, allow bypass if OCR confidence is very low
-          if (process.env.NODE_ENV === 'development' && aadhaarResult.confidence < 30) {
-            console.warn('⚠️ Low OCR confidence detected - allowing registration in development mode');
-            console.warn(`Extracted last 4: ${extractedLast4} | Provided last 4: ${aadhaarLast4}`);
-            ocrResult = {
-              match: true,
-              confidence: 50,
-              extractedName: full_name,
-              verificationType: 'aadhaar',
-              note: 'Aadhaar OCR bypassed in development mode'
-            };
-          } else {
-            return res.status(400).json({
-              success: false,
-              error: 'Aadhaar last 4 digits do not match',
-              details: {
-                providedLast4: aadhaarLast4,
-                extractedLast4: extractedLast4,
-                suggestion: 'Please verify you entered the correct last 4 digits or use Signature mode instead.'
-              }
-            });
-          }
-        } else {
-          // Last 4 digits matched successfully
-          console.log('✅ Aadhaar last 4 digits verified successfully');
-          ocrResult = {
-            match: true,
-            confidence: 100, // Perfect match for digits
-            extractedName: full_name,
-            verificationType: 'aadhaar',
-            aadhaarData: {
-              dateOfBirth: aadhaarData.dateOfBirth,
-              gender: aadhaarData.gender,
-              aadhaarNumber: aadhaarData.aadhaarNumber
-            }
-          };
-        }
-      } catch (aadhaarError) {
-        console.error('Aadhaar verification failed:', aadhaarError);
-        return res.status(500).json({
-          success: false,
-          error: 'Aadhaar verification service unavailable'
-        });
-      }
-    } else {
-      // Step 1B: Signature-based verification (original flow)
-      try {
-        console.log('Starting signature verification...');
-        const extractedText = await ocrService.extractTextFromImage(req.file.buffer);
-        ocrResult = ocrService.verifySignatureNameEnhanced(extractedText, full_name);
-
-        console.log('OCR verification result:', ocrResult);
-
-        if (!ocrResult.match) {
-          return res.status(400).json({
-            success: false,
-            error: 'Signature verification failed',
-            details: {
-              extractedName: ocrResult.extractedName,
-              confidence: ocrResult.confidence,
-              strategies: ocrResult.strategies
-            }
-          });
-        }
-        (ocrResult as any).verificationType = 'signature';
-      } catch (ocrError) {
-        console.error('OCR verification failed:', ocrError);
-        // In development, allow bypass for demo purposes
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('OCR bypass enabled for development');
-          ocrResult = { match: true, confidence: 80, extractedName: full_name, verificationType: 'signature' };
-        } else {
-          return res.status(500).json({
-            success: false,
-            error: 'Signature verification service unavailable'
-          });
-=======
       guardian_phone,
       govt_id_type,
       govt_id_number,
@@ -429,148 +273,10 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
           blockchainHash = await blockchainService.addVerifiedRecord(patientHash, hospital_name, ipfsCID!, verification_type, ocrResult.match);
         } catch (e) {
           blockchainHash = `0x${Date.now().toString(16).padEnd(64, '0')}`; // Demo mock fallback
->>>>>>> fab74a2 (march-update)
         }
       }
     }
 
-<<<<<<< HEAD
-    // Step 2: Upload signature to IPFS
-    let ipfsCID;
-    try {
-      console.log('Uploading signature to IPFS...');
-      ipfsCID = await ipfsService.pinFile(
-        req.file.buffer,
-        `signature-${full_name}-${Date.now()}.${req.file.mimetype.split('/')[1]}`,
-        {
-          hospitalId: hospital_id!.toString(),
-          donorName: full_name.toString(),
-          uploadDate: new Date().toISOString(),
-          ocrVerified: ocrResult.match.toString(),
-          ocrConfidence: ocrResult.confidence.toString()
-        }
-      );
-      console.log('Signature uploaded to IPFS:', ipfsCID);
-    } catch (ipfsError) {
-      console.error('IPFS upload failed:', ipfsError);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to upload signature to IPFS'
-      });
-    }
-
-    // Step 3: Generate patient hash and record on blockchain
-    let blockchainHash;
-    try {
-      console.log('Recording on blockchain...');
-      // Note: Using generatePatientHash for donors too as the structure is similar for hash generation
-      const patientHash = blockchainService.generatePatientHash(
-        full_name,
-        // Donors might not have DOB in the same way, but we use what we have or defaults
-        // If date_of_birth is not in donor schema, we might need to adjust this.
-        // Looking at the INSERT, there is no date_of_birth for donors, only age.
-        // We'll use age as a proxy or empty string if needed, but generatePatientHash expects a date string.
-        // Let's check what was passed before. It was using date_of_birth which was undefined!
-        // We should probably use age or a placeholder.
-        "1970-01-01", // Placeholder DOB since donors only have age
-        "DONOR-" + Date.now(), // Placeholder national ID
-        blood_type
-      );
-      blockchainHash = await blockchainService.addVerifiedRecord(
-        patientHash,
-        hospital_name,
-        ipfsCID,
-        verificationType,  // 'signature' or 'aadhaar'
-        ocrResult.match    // OCR verification result
-      );
-      console.log('Blockchain record created:', blockchainHash);
-    } catch (blockchainError) {
-      console.error('Blockchain recording failed:', blockchainError);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to record on blockchain'
-      });
-    }
-
-    // Calculate hospital_display_id
-    const maxIdResult = await pool.query(
-      "SELECT MAX(hospital_display_id) as max_id FROM donors WHERE hospital_id = $1",
-      [hospital_id]
-    );
-    const nextDisplayId = (maxIdResult.rows[0]?.max_id || 0) + 1;
-
-    // Step 4: Save to database (donor_id auto-generated) with retry logic
-    let result;
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    while (retryCount < maxRetries) {
-      try {
-        console.log(`Attempting database insertion (attempt ${retryCount + 1}/${maxRetries})...`);
-        result = await pool.query(
-          `INSERT INTO donors (
-            hospital_id, full_name, age, gender, blood_type,
-            organs_to_donate, medical_history, contact_phone, 
-            contact_email, guardian_name, guardian_phone, signature_ipfs_hash,
-            blockchain_hash, signature_verified, ocr_confidence, hospital_display_id
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-          RETURNING *`,
-          [
-            hospital_id,
-            full_name,
-            age,
-            gender,
-            blood_type,
-            parsedOrgans,
-            medical_history,
-            contact_phone,
-            contact_email,
-            guardian_name,
-            guardian_phone,
-            ipfsCID,
-            blockchainHash,
-            ocrResult.match,
-            ocrResult.confidence,
-            nextDisplayId
-          ]
-        );
-        console.log('✅ Database insertion successful!');
-        break; // Success, exit retry loop
-      } catch (dbError) {
-        retryCount++;
-        console.error(`❌ Database insertion failed (attempt ${retryCount}/${maxRetries}):`, (dbError as Error).message);
-
-        if (retryCount >= maxRetries) {
-          console.error('Max retries reached, giving up');
-          throw dbError;
-        }
-
-        // Wait before retrying (exponential backoff)
-        const delay = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s
-        console.log(`Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-
-    res.json({
-      success: true,
-      message: "Donor registered successfully with blockchain verification",
-      donor: result?.rows[0],
-      verification: {
-        ocrVerified: ocrResult.match,
-        confidence: ocrResult.confidence,
-        ipfsCID,
-        blockchainHash,
-        signatureUrl: ipfsService.getFileUrl(ipfsCID)
-      }
-    });
-  } catch (error) {
-    console.error("Error registering donor:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to register donor",
-    });
-=======
     // 5. Database Logic (Transactional Upsert)
     const maxIdResult = await pool.query("SELECT MAX(hospital_display_id) as max_id FROM donors WHERE hospital_id = $1", [hospital_id]);
     const nextDisplayId = (maxIdResult.rows[0]?.max_id || 0) + 1;
@@ -643,7 +349,6 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
   } catch (error) {
     console.error("Critical error in registration/import:", error);
     res.status(500).json({ success: false, error: (error as Error).message || "Internal server error" });
->>>>>>> fab74a2 (march-update)
   }
 });
 
@@ -733,11 +438,7 @@ router.delete("/:donor_id", authenticateHospital, async (req: AuthRequest, res) 
     const { donor_id } = req.params;
 
     const result = await pool.query(
-<<<<<<< HEAD
-      "DELETE FROM donors WHERE donor_id = $1 AND hospital_id = $2 RETURNING *",
-=======
       "UPDATE donors SET status = 'Transferred' WHERE donor_id = $1 AND hospital_id = $2 RETURNING *",
->>>>>>> fab74a2 (march-update)
       [donor_id, hospital_id],
     );
 
@@ -761,33 +462,6 @@ router.delete("/:donor_id", authenticateHospital, async (req: AuthRequest, res) 
   }
 });
 
-<<<<<<< HEAD
-// Update donor
-router.put("/:donor_id", authenticateHospital, async (req: AuthRequest, res) => {
-  try {
-    const hospital_id = req.hospital?.hospital_id;
-    const { donor_id } = req.params;
-    const {
-      full_name,
-      age,
-      gender,
-      blood_type,
-      organs_to_donate,
-      medical_history,
-      contact_phone,
-      contact_email,
-      guardian_name,
-      guardian_phone,
-    } = req.body;
-
-    // Verify donor belongs to this hospital
-    const donorCheck = await pool.query(
-      "SELECT donor_id FROM donors WHERE donor_id = $1 AND hospital_id = $2",
-      [donor_id, hospital_id],
-    );
-
-    if (donorCheck.rows.length === 0) {
-=======
 // Public Donor Info (No Auth Required) - For verification page display
 router.get("/public/verify/:id", async (req, res) => {
   try {
@@ -834,49 +508,12 @@ router.post("/:id/check-in", authenticateHospital, async (req: AuthRequest, res)
     );
 
     if (result.rows.length === 0) {
->>>>>>> fab74a2 (march-update)
       return res.status(404).json({
         success: false,
         error: "Donor not found or doesn't belong to your hospital",
       });
     }
 
-<<<<<<< HEAD
-    const result = await pool.query(
-      `UPDATE donors SET
-        full_name = $1, age = $2, gender = $3, blood_type = $4,
-        organs_to_donate = $5, medical_history = $6, contact_phone = $7,
-        contact_email = $8, guardian_name = $9, guardian_phone = $10
-      WHERE donor_id = $11 AND hospital_id = $12
-      RETURNING *`,
-      [
-        full_name,
-        age,
-        gender,
-        blood_type,
-        organs_to_donate,
-        medical_history,
-        contact_phone,
-        contact_email,
-        guardian_name,
-        guardian_phone,
-        donor_id,
-        hospital_id,
-      ],
-    );
-
-    res.json({
-      success: true,
-      message: "Donor updated successfully",
-      donor: result.rows[0],
-    });
-  } catch (error) {
-    console.error("Error updating donor:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to update donor",
-    });
-=======
     res.json({
       success: true,
       message: "Donor activity verified successfully",
@@ -885,13 +522,10 @@ router.post("/:id/check-in", authenticateHospital, async (req: AuthRequest, res)
   } catch (error) {
     console.error("Error in donor check-in:", error);
     res.status(500).json({ success: false, error: "Check-in failed" });
->>>>>>> fab74a2 (march-update)
   }
 });
 
 
-<<<<<<< HEAD
-=======
 // Global Donor Lookup (Blockchain Search)
 // Global Donor Lookup (Cross-Hospital Search)
 router.post("/global-lookup", authenticateHospital, async (req: AuthRequest, res) => {
@@ -1034,5 +668,4 @@ router.post("/import", express.json(), authenticateHospital, async (req: AuthReq
   }
 });
 
->>>>>>> fab74a2 (march-update)
 export default router;

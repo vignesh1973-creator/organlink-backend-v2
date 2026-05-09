@@ -1,19 +1,11 @@
 import express from "express";
 import { pool } from "../config/database.js";
-<<<<<<< HEAD
-import { authenticateHospital } from "../middleware/auth.js";
-=======
 import { authenticateHospital, AuthRequest } from "../middleware/auth.js";
->>>>>>> fab74a2 (march-update)
 
 const router = express.Router();
 
 // Get hospital dashboard statistics
-<<<<<<< HEAD
-router.get("/stats", authenticateHospital, async (req, res) => {
-=======
 router.get("/stats", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
 
@@ -40,17 +32,6 @@ router.get("/stats", authenticateHospital, async (req: AuthRequest, res) => {
       [hospital_id],
     );
 
-<<<<<<< HEAD
-    // Get matching requests statistics
-    const matchingStats = await pool.query(
-      `SELECT 
-        COUNT(*) as total_requests,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_requests,
-        COUNT(CASE WHEN status = 'matched' THEN 1 END) as successful_matches,
-        COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_requests
-       FROM matching_requests 
-       WHERE requesting_hospital_id = $1`,
-=======
     // Using matching_requests joined with patients, because organ_requests might not exist
     // in older local database schema versions, and requesting_hospital_id was causing errors.
     const matchingStats = await pool.query(
@@ -62,7 +43,6 @@ router.get("/stats", authenticateHospital, async (req: AuthRequest, res) => {
        FROM matching_requests m
        JOIN patients p ON m.patient_id = p.patient_id
        WHERE p.hospital_id = $1`,
->>>>>>> fab74a2 (march-update)
       [hospital_id],
     );
 
@@ -145,11 +125,7 @@ router.get("/stats", authenticateHospital, async (req: AuthRequest, res) => {
 });
 
 // Get hospital profile
-<<<<<<< HEAD
-router.get("/profile", authenticateHospital, async (req, res) => {
-=======
 router.get("/profile", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
 
@@ -182,11 +158,7 @@ router.get("/profile", authenticateHospital, async (req: AuthRequest, res) => {
 });
 
 // Get notifications for hospital
-<<<<<<< HEAD
-router.get("/notifications", authenticateHospital, async (req, res) => {
-=======
 router.get("/notifications", authenticateHospital, async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
   try {
     const hospital_id = req.hospital?.hospital_id;
     const { limit = 20, offset = 0 } = req.query;
@@ -216,11 +188,7 @@ router.get("/notifications", authenticateHospital, async (req: AuthRequest, res)
 router.patch(
   "/notifications/:notification_id/read",
   authenticateHospital,
-<<<<<<< HEAD
-  async (req, res) => {
-=======
   async (req: AuthRequest, res) => {
->>>>>>> fab74a2 (march-update)
     try {
       const hospital_id = req.hospital?.hospital_id;
       const { notification_id } = req.params;
