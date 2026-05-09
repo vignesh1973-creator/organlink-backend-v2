@@ -141,10 +141,10 @@ router.get("/outgoing-requests", authenticateHospital, async (req: AuthRequest, 
               to_char(or_req.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI:SS') as created_at_ist,
               to_char(or_req.updated_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI:SS') as updated_at_ist
        FROM organ_requests or_req
-       LEFT JOIN patients p ON or_req.patient_id = p.patient_id
-       LEFT JOIN donors d ON or_req.donor_id = d.donor_id
-       LEFT JOIN hospitals h_to ON or_req.to_hospital_id = h_to.hospital_id
-       WHERE or_req.from_hospital_id = $1
+       LEFT JOIN patients p ON or_req.patient_id::text = p.patient_id::text
+       LEFT JOIN donors d ON or_req.donor_id::text = d.donor_id::text
+       LEFT JOIN hospitals h_to ON or_req.to_hospital_id::text = h_to.hospital_id::text
+       WHERE or_req.from_hospital_id::text = $1
        ORDER BY or_req.created_at DESC`,
       [hospital_id],
     );
@@ -215,8 +215,8 @@ router.get("/incoming-matches", authenticateHospital, async (req: AuthRequest, r
               h_from.name as requesting_hospital_name, h_from.city as requesting_city, h_from.state as requesting_state
        FROM notifications n
        LEFT JOIN organ_requests or_req ON n.related_id = or_req.request_id
-       LEFT JOIN patients p ON or_req.patient_id = p.patient_id
-       LEFT JOIN hospitals h_from ON or_req.from_hospital_id = h_from.hospital_id
+       LEFT JOIN patients p ON or_req.patient_id::text = p.patient_id::text
+       LEFT JOIN hospitals h_from ON or_req.from_hospital_id::text = h_from.hospital_id::text
        WHERE n.hospital_id = $1 
          AND n.type IN ('organ_request', 'organ_match')
          AND or_req.request_id IS NOT NULL
@@ -272,8 +272,8 @@ router.post("/respond", authenticateHospital, async (req: AuthRequest, res) => {
     const requestResult = await pool.query(
       `SELECT or_req.*, p.full_name as patient_name, h.name as from_hospital_name
        FROM organ_requests or_req
-       JOIN patients p ON or_req.patient_id = p.patient_id
-       JOIN hospitals h ON or_req.from_hospital_id = h.hospital_id
+       JOIN patients p ON or_req.patient_id::text = p.patient_id::text
+       JOIN hospitals h ON or_req.from_hospital_id::text = h.hospital_id::text
        WHERE or_req.request_id = $1 AND or_req.to_hospital_id = $2`,
       [request_id, hospital_id],
     );
@@ -601,8 +601,8 @@ router.post("/requests/:request_id/respond", authenticateHospital, async (req: A
     const requestResult = await pool.query(
       `SELECT or_req.*, p.full_name as patient_name, h.name as from_hospital_name
        FROM organ_requests or_req
-       JOIN patients p ON or_req.patient_id = p.patient_id
-       JOIN hospitals h ON or_req.from_hospital_id = h.hospital_id
+       JOIN patients p ON or_req.patient_id::text = p.patient_id::text
+       JOIN hospitals h ON or_req.from_hospital_id::text = h.hospital_id::text
        WHERE or_req.request_id = $1 AND or_req.to_hospital_id = $2`,
       [request_id, hospitalId]
     );

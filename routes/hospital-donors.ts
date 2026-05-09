@@ -343,7 +343,13 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       success: true,
       message: isImport ? "Donor adopted successfully" : "Donor registered successfully",
       donor: result.rows[0],
-      blockchainHash
+      verification: {
+        ocrVerified: ocrResult.match,
+        confidence: ocrResult.confidence,
+        ipfsCID,
+        blockchainHash,
+        signatureUrl: ipfsCID ? ipfsService.getFileUrl(ipfsCID) : null
+      }
     });
 
   } catch (error) {

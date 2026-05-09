@@ -44,6 +44,8 @@ interface MatchScore {
   organs_available: string[];
   hospital_id: string;
   hospital_name: string;
+  hospital_city?: string;
+  hospital_state?: string;
   match_score: number;
   compatibility_score: number;
   urgency_bonus: number;
@@ -473,6 +475,8 @@ export async function findEnhancedMatches(
         organs_available: donor.organs_available,
         hospital_id: donor.hospital_id,
         hospital_name: donor.hospital_name,
+        hospital_city: donor.city,
+        hospital_state: donor.state,
         match_score: Math.round(weightedScore),
         compatibility_score: Math.round(bloodCompatibility),
         urgency_bonus: Math.round(urgencyScore),
@@ -488,7 +492,7 @@ export async function findEnhancedMatches(
     return matches
       .filter((match) => match.match_score > 40) // Only return viable matches
       .sort((a, b) => b.match_score - a.match_score)
-      .slice(0, 10); // Top 10 matches
+      .slice(0, 50); // Top 50 matches
   } catch (error) {
     console.error("Enhanced AI matching error:", error);
     throw error;
