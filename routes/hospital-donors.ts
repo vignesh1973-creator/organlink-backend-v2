@@ -200,9 +200,11 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
       verification_type = 'signature',
       aadhaar_last4,
       organlink_id: existing_ogid,
+      living_status,
       existing_ipfs_hash,
       existing_blockchain_hash,
-      existing_ocr_confidence
+      existing_ocr_confidence,
+      condition_reason
     } = req.body;
 
     console.log(`[Donor Registration] Action for: ${full_name} | OGID: ${existing_ogid || 'New'}`);
@@ -297,8 +299,8 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         organs_to_donate, medical_history, contact_phone, 
         contact_email, guardian_name, guardian_phone, signature_ipfs_hash,
         blockchain_hash, signature_verified, ocr_confidence, hospital_display_id, status,
-        govt_id_type, govt_id_number, organlink_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'Available', $17, $18, $19)
+        govt_id_type, govt_id_number, organlink_id, living_status, condition_reason
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'Available', $17, $18, $19, $20, $21)
       ON CONFLICT (organlink_id) DO UPDATE SET
         hospital_id = EXCLUDED.hospital_id,
         full_name = EXCLUDED.full_name,
@@ -313,7 +315,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
         blockchain_hash = EXCLUDED.blockchain_hash,
         signature_verified = EXCLUDED.signature_verified,
         status = 'Available',
-        hospital_display_id = EXCLUDED.hospital_display_id
+        hospital_display_id = EXCLUDED.hospital_display_id,
+        living_status = EXCLUDED.living_status,
+        condition_reason = EXCLUDED.condition_reason
       RETURNING *`,
           [
             hospital_id || null, 
@@ -334,7 +338,9 @@ router.post("/register", upload.single('signature'), authenticateHospital, async
             nextDisplayId || 1, 
             govt_id_type || 'Imported',
             govt_id_number || `REG-${Date.now()}`,
-            organlink_id || null
+            organlink_id || null,
+            living_status || 'Living',
+            condition_reason || 'Voluntary/Altruistic'
           ]
     );
     console.log('[DEBUG] UPSERT completed successfully!');
@@ -625,7 +631,7 @@ router.post("/import", express.json(), authenticateHospital, async (req: AuthReq
     const {
       full_name, age, gender, blood_type, organs_to_donate, medical_history, contact_phone, 
       contact_email, guardian_name, guardian_phone, govt_id_type, govt_id_number, 
-      organlink_id, existing_ipfs_hash, existing_blockchain_hash, existing_ocr_confidence
+      organlink_id, living_status, condition_reason, existing_ipfs_hash, existing_blockchain_hash, existing_ocr_confidence
     } = req.body;
 
     if (!organlink_id) {
@@ -643,20 +649,22 @@ router.post("/import", express.json(), authenticateHospital, async (req: AuthReq
         organs_to_donate, medical_history, contact_phone, 
         contact_email, guardian_name, guardian_phone, signature_ipfs_hash,
         blockchain_hash, signature_verified, ocr_confidence, hospital_display_id, status,
-        govt_id_type, govt_id_number, organlink_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'Available', $17, $18, $19)
+        govt_id_type, govt_id_number, organlink_id, living_status, condition_reason
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'Available', $17, $18, $19, $20, $21)
       ON CONFLICT (organlink_id) DO UPDATE SET
         hospital_id = EXCLUDED.hospital_id,
         status = 'Available',
         medical_history = EXCLUDED.medical_history,
-        hospital_display_id = EXCLUDED.hospital_display_id
+        hospital_display_id = EXCLUDED.hospital_display_id,
+        living_status = EXCLUDED.living_status,
+        condition_reason = EXCLUDED.condition_reason
       RETURNING *`,
       [
         hospital_id || null, full_name || null, age || null, gender || null, blood_type || null,
         JSON.stringify(parsedOrgans) || null, medical_history || null, contact_phone || null, contact_email || null, 
         guardian_name || null, guardian_phone || null, existing_ipfs_hash || null,
         existing_blockchain_hash || null, true, existing_ocr_confidence ?? 100,
-        nextDisplayId || 1, govt_id_type || 'Imported', govt_id_number || `REG-${Date.now()}`, organlink_id || null
+        nextDisplayId || 1, govt_id_type || 'Imported', govt_id_number || `REG-${Date.now()}`, organlink_id || null, living_status || 'Living', condition_reason || 'Voluntary/Altruistic'
       ]
     );
 

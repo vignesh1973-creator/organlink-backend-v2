@@ -279,7 +279,8 @@ function calculateDistance(
 function calculateDistanceScoreByCityState(
   patientLocation: { city?: string; state?: string; country?: string },
   donorLocation: { city?: string; state?: string; country?: string },
-): { score: number; category: string; explanation: string } {
+  organNeeded: string,
+): { score: number; category: string; explanation: string; isDisqualified?: boolean } {
   // Normalize locations to lowercase for comparison
   const pCity = (patientLocation.city || '').toLowerCase().trim();
   const pState = (patientLocation.state || '').toLowerCase().trim();
@@ -317,11 +318,21 @@ function calculateDistanceScoreByCityState(
   }
 
   // Different country = lower score (international match)
-  return {
-    score: 30,
-    category: 'International',
-    explanation: `Different country (${donorLocation.country || 'Unknown'}) - International`,
-  };
+  const isHeartOrLung = ["heart", "lung", "lungs"].includes((organNeeded || '').toLowerCase().trim());
+  if (isHeartOrLung) {
+    return {
+      score: 0,
+      category: 'International',
+      explanation: `Different country - [❌ Infeasible: Exceeds ${organNeeded} Cold Ischemia Time]`,
+      isDisqualified: true
+    };
+  } else {
+    return {
+      score: 20,
+      category: 'International',
+      explanation: `Different country - [⚠️ Pending THOTA / Legal Clearance]`,
+    };
+  }
 }
 
 function calculateDistanceScore(distance: number): number {
@@ -443,6 +454,7 @@ export async function findEnhancedMatches(
       const distanceResult = calculateDistanceScoreByCityState(
         { city: patient.city, state: patient.state, country: patient.country },
         { city: donor.city, state: donor.state, country: donor.country },
+        patient.organ_needed,
       );
       const distanceScore = distanceResult.score;
 
@@ -450,12 +462,17 @@ export async function findEnhancedMatches(
       const medicalRiskScore = calculateMedicalRiskScore(patient, donor);
 
       // Enhanced weighted scoring algorithm (based on medical research)
-      const weightedScore =
+      let weightedScore =
         bloodCompatibility * 0.35 + // Blood compatibility - most critical
         urgencyScore * 0.25 + // Patient urgency
         distanceScore * 0.15 + // Geographical proximity
         timeScore * 0.1 + // Waiting time
         medicalRiskScore * 0.15; // Medical risk assessment
+
+      // Hard enforcement of biological constraints
+      if (distanceResult.isDisqualified) {
+        weightedScore = 0;
+      }
 
       // Generate human-readable explanation
       let explanation = `Blood: ${bloodCompatibility}% | Distance: ${distanceResult.category} (${distanceScore}%)`;

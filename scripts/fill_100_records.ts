@@ -160,18 +160,28 @@ async function run() {
                         lastCheckIn = `NOW() - INTERVAL '${Math.floor(Math.random() * 20)} days'`; // Green (Active)
                     }
 
+                    const livingStatus = Math.random() > 0.9 ? 'Deceased' : 'Living';
+                    
+                    let conditionReason = 'Voluntary/Altruistic';
+                    if (livingStatus === 'Living') {
+                        conditionReason = Math.random() > 0.3 ? 'Voluntary/Altruistic' : 'Directed/Family';
+                    } else {
+                        const deceasedReasons = ['Brain Dead', 'Cardiac/Circulatory Death', 'Accident/Trauma'];
+                        conditionReason = deceasedReasons[Math.floor(Math.random() * deceasedReasons.length)];
+                    }
+
                     await pool.query(`
                         INSERT INTO donors (
                             hospital_id, full_name, age, gender, blood_type, organs_to_donate, 
                             medical_history, contact_phone, contact_email, status, 
                             govt_id_type, govt_id_number, organlink_id, blockchain_hash, signature_verified,
-                            last_check_in
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Available', 'PAN', $10, $11, $12, true, ${lastCheckIn})
+                            last_check_in, living_status, condition_reason
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Available', 'PAN', $10, $11, $12, true, ${lastCheckIn}, $13, $14)
                     `, [
                         hId, name, age, gender, validBlood, organJson, 'Healthy',
                         `888${index}000${hId.replace(/[^0-9]/g, '').substring(0,3)}`, `d${index}@kaggle.com`,
                         `PAN${index}H${hId.replace(/[^0-9]/g, '').substring(0,3)}`, `OL-D-${hId.replace(/[^0-9]/g, '').substring(0,3)}-${count++}`,
-                        mockHash()
+                        mockHash(), livingStatus, conditionReason
                     ]);
                     toAdd--;
                 }
